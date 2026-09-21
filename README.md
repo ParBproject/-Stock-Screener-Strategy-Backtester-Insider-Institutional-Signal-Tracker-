@@ -1,5 +1,13 @@
 # FinTools Pro
 
+## For a data analyst application
+
+**Supporting equity-research dashboard.** Screening, a backtest, and ownership prints in one board. Useful for a markets analyst conversation. It repeats the finance-dashboard pattern, so it should not be the first link you send.
+
+<p align="center"><img src="home.png" alt="Screener home dashboard" width="100%"></p>
+<p align="center"><img src="screener.png" alt="Stock screener" width="100%"></p>
+<p align="center"><img src="backtester.png" alt="Strategy backtester" width="100%"></p>
+
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)](requirements.txt)
 [![Streamlit](https://img.shields.io/badge/Streamlit-Trading_Intelligence-FF4B4B?logo=streamlit&logoColor=white)](app.py)
 [![Data](https://img.shields.io/badge/Data-yfinance-2ea44f)](https://github.com/ranaroussi/yfinance)
