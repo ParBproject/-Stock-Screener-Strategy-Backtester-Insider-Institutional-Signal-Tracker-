@@ -4,8 +4,8 @@ Run with:  streamlit run app.py
 """
 
 import streamlit as st
-import pandas as pd
 import plotly.graph_objects as go
+from datetime import date, timedelta
 from pathlib import Path
 
 # ── Page config (must be first Streamlit call) ────────────────────────────────
@@ -21,8 +21,7 @@ css_path = Path(__file__).parent / "assets" / "style.css"
 if css_path.exists():
     st.markdown(f"<style>{css_path.read_text()}</style>", unsafe_allow_html=True)
 
-from utils.data_fetcher import get_price_history, get_realtime_price, get_fundamentals
-from utils.charts import equity_curve_chart
+from utils.data_fetcher import DataFetchError, get_price_history, get_realtime_price, get_fundamentals
 from config import THEME
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
@@ -50,7 +49,7 @@ with st.sidebar:
 
     st.markdown("""
     <div style='color:#64748b; font-size:0.72rem; padding:0.5rem 0;'>
-        Data: yfinance · pandas_ta · Plotly<br>
+        Data: yfinance · Plotly<br>
         For educational use only.
     </div>
     """, unsafe_allow_html=True)
@@ -59,7 +58,7 @@ with st.sidebar:
 st.markdown("""
 <div class='page-header'>
     <h1>🏠 Home Dashboard</h1>
-    <p>Real-time market overview · Watchlist · Quick metrics</p>
+    <p>Latest daily closes · Watchlist · Quick metrics</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -83,15 +82,15 @@ for col, (name, sym) in zip(cols, INDICES.items()):
             prev  = info.get("prev_close")
             if price and prev:
                 chg = (price - prev) / prev * 100
-                delta_color = "normal"
                 col.metric(
                     label=name,
                     value=f"{price:,.2f}" if price < 10_000 else f"{price:,.0f}",
                     delta=f"{chg:+.2f}%",
-                    delta_color="normal",
                 )
             else:
-                col.metric(label=name, value="Loading…")
+                col.metric(label=name, value="—")
+        except DataFetchError:
+            col.metric(label=name, value="—")
         except Exception:
             col.metric(label=name, value="—")
 
@@ -101,10 +100,11 @@ st.divider()
 st.markdown("#### 🔭 Watchlist")
 
 DEFAULT_WATCH = ["AAPL", "MSFT", "NVDA", "TSLA", "AMZN", "META"]
+st.caption("Daily closes from the vendor. The list is a static set of names that trade today, not a survivorship-free universe.")
 watchlist = st.multiselect(
     "Add tickers to watchlist:",
     options=["AAPL","MSFT","GOOGL","AMZN","META","NVDA","TSLA","JPM","V","NFLX",
-             "AMD","INTC","PYPL","SQ","SHOP","UBER","LYFT","SNAP","TWTR","COIN"],
+             "AMD","INTC","PYPL","XYZ","SHOP","UBER","LYFT","SNAP","COIN"],
     default=DEFAULT_WATCH,
     label_visibility="collapsed",
 )
@@ -122,8 +122,9 @@ if watchlist:
                 chg   = ((price - prev) / prev * 100) if prev else 0
                 color = THEME["green"] if chg >= 0 else THEME["red"]
 
-                # Sparkline
-                hist = get_price_history(ticker, "2024-07-01", "2025-01-01")
+                end = date.today()
+                start = end - timedelta(days=180)
+                hist = get_price_history(ticker, start.isoformat(), end.isoformat())
                 spark = go.Figure(go.Scatter(
                     x=hist.index if not hist.empty else [],
                     y=hist["close"].tolist() if not hist.empty else [],
@@ -141,8 +142,12 @@ if watchlist:
                     yaxis=dict(visible=False),
                 )
 
-                cap = info.get("market_cap", 0) or 0
+                cap = fund.get("market_cap") or info.get("market_cap") or 0
                 cap_str = f"${cap/1e12:.2f}T" if cap >= 1e12 else (f"${cap/1e9:.1f}B" if cap >= 1e9 else "—")
+                pe = fund.get("pe")
+                beta = fund.get("beta")
+                pe_txt = f"{pe:.1f}" if isinstance(pe, (int, float)) else "—"
+                beta_txt = f"{beta:.2f}" if isinstance(beta, (int, float)) else "—"
 
                 st.markdown(f"""
                 <div class='ticker-card'>
@@ -163,15 +168,17 @@ if watchlist:
                     </div>
                     <div style='color:{THEME["text_muted"]}; font-size:0.7rem;'>
                         Cap: {cap_str} &nbsp;|&nbsp;
-                        P/E: {fund.get('pe') or '—'} &nbsp;|&nbsp;
-                        β: {fund.get('beta') or '—'}
+                        P/E: {pe_txt} &nbsp;|&nbsp;
+                        β: {beta_txt}
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
                 st.plotly_chart(spark, use_container_width=True, config={"displayModeBar": False})
 
-            except Exception as e:
-                col.warning(f"{ticker}: {e}")
+            except DataFetchError as exc:
+                col.warning(f"{ticker}: {exc}")
+            except Exception:
+                col.warning(f"{ticker}: market data is unavailable.")
 
 st.divider()
 
@@ -193,7 +200,7 @@ with qa_cols[1]:
         <div style='font-size:2rem;'>🔁</div>
         <div style='color:#7c3aed; font-weight:600; margin:6px 0;'>Strategy Backtester</div>
         <div style='color:#64748b; font-size:0.78rem;'>Test 5 built-in strategies
-        on any ticker from 2015–present</div>
+        on a ticker and date range you choose</div>
     </div>
     """, unsafe_allow_html=True)
 with qa_cols[2]:
