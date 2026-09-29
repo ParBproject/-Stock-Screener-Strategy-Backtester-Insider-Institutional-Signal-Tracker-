@@ -30,7 +30,21 @@ PLOTLY_LAYOUT = dict(
     hoverlabel=dict(bgcolor=THEME["surface2"], font_color=THEME["text"]),
 )
 
+# Trading-day count used to annualize daily backtest returns.
+TRADING_DAYS_PER_YEAR = 252
+
+# SEC Form 4 is due within two business days of the transaction. When a feed
+# has no filing date, that deadline is the earliest public date we use.
+# pandas business days skip weekends, not exchange holidays.
+FORM4_BUSINESS_DAY_LAG = 2
+
+# A 13F is due 45 calendar days after quarter end. The quarter-end date itself
+# is not a public date.
+THIRTEEN_F_LAG_DAYS = 45
+
 # ── Universe of tickers for screener ─────────────────────────────────────────
+# Names that are listed today. This is not point-in-time index membership:
+# delisted companies are absent, so screens on this list have survivorship bias.
 SP500_SAMPLE = [
     "AAPL","MSFT","GOOGL","AMZN","META","NVDA","TSLA","BRK-B","UNH","JPM",
     "V","XOM","JNJ","PG","MA","HD","CVX","MRK","ABBV","LLY",
@@ -70,8 +84,9 @@ BACKTEST_DEFAULTS = {
     "start":        "2020-01-01",
     "end":          "2024-12-31",
     "capital":      100_000,
-    "commission":   0.001,   # 0.1% per trade
-    "slippage":     0.001,   # 0.1% slippage
+    "commission":   0.001,   # fraction of notional per fill
+    "slippage":     0.001,   # fraction of notional per fill
+    "position_fraction": 1.0,  # 1.0 is fully invested when long
 }
 
 STRATEGY_PARAMS = {
@@ -95,6 +110,6 @@ STRATEGY_PARAMS = {
     },
     "Bollinger Bands": {
         "period":      {"default": 20,  "min": 5,   "max": 50,  "step": 1},
-        "std_dev":     {"default": 2,   "min": 1,   "max": 4,   "step": 0},
+        "std_dev":     {"default": 2.0, "min": 1.0, "max": 4.0, "step": 0.5},
     },
 }
