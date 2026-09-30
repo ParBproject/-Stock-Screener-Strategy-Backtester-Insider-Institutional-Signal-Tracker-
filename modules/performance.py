@@ -84,6 +84,21 @@ def _sortino(returns: np.ndarray) -> float | None:
     return float(returns.mean() / downside_deviation * math.sqrt(TRADING_DAYS_PER_YEAR))
 
 
+def geometric_excess(strategy_total: float | None, benchmark_total: float | None) -> float | None:
+    """Wealth ratio minus one. Not the arithmetic gap between two total returns.
+
+    A strategy that compounds to 1.21 against a benchmark that compounds to
+    1.10 has an excess of 0.10, not 0.11.
+    """
+    if strategy_total is None or benchmark_total is None:
+        return None
+    strategy_wealth = 1.0 + float(strategy_total)
+    benchmark_wealth = 1.0 + float(benchmark_total)
+    if strategy_wealth <= 0.0 or benchmark_wealth <= 0.0:
+        return None
+    return strategy_wealth / benchmark_wealth - 1.0
+
+
 def _alpha_beta(returns: pd.Series, benchmark: pd.Series) -> tuple[float | None, float | None]:
     """Jensen alpha with rf = 0, annualized by multiplying the daily alpha by 252.
 

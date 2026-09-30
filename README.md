@@ -9,7 +9,7 @@
 <p align="center"><img src="backtester.png" alt="Strategy backtester" width="100%"></p>
 <p align="center"><img src="insider.png" alt="Insider filings" width="100%"></p>
 
-[![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)](requirements.txt)
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](requirements.txt)
 [![Streamlit](https://img.shields.io/badge/Streamlit-Trading_Intelligence-FF4B4B?logo=streamlit&logoColor=white)](app.py)
 [![Data](https://img.shields.io/badge/Data-yfinance-2ea44f)](https://github.com/ranaroussi/yfinance)
 
@@ -29,12 +29,14 @@ The screenshots are interface previews. They are not an audited track record, an
 ## Backtest rules
 
 - A signal on bar t may use that bar's close. The order is filled at the **next session's open**. The same bar's move is not credited.
-- Prices are split-adjusted (`auto_adjust=True`).
-- Commission and slippage are fractions of traded notional and are charged when the position changes. The default in `config.py` is 0.1% commission and 0.1% slippage per fill. Position fraction scales how much of capital is long; the rest earns zero.
-- Total return and CAGR are compounded. CAGR, Sharpe, and Sortino use 252 trading days. Sharpe and Sortino are left blank when volatility or downside deviation is zero. They are not reported as infinity.
-- The last open is not marked, because there is no following open. A signal on the final bar is not filled.
-- Closed trades are round trips. A position still open at the end stays in the equity curve and is not counted as a win or a loss.
-- Alpha and beta are implemented for a caller-supplied benchmark series (daily Jensen alpha, rf = 0, annualized by × 252). The page does not download a benchmark, so it does not display alpha or beta.
+- Prices are adjusted for splits and dividends (`auto_adjust=True`). If a frame still has both a raw close and an adjusted close, opens, highs, and lows are scaled by that ratio before the return is computed.
+- Commission and slippage are fractions of traded notional and are charged when the position changes. The default in `config.py` is 0.1% commission and 0.1% slippage per fill. Position fraction scales how much of capital is long; the rest earns zero. The cost is subtracted from that bar's return. It is not modeled as a worse fill price.
+- The benchmark is a buy-and-hold of the same ticker. It is filled at the second open (the first bar this engine can trade), stays long through the last open, and pays the same commission and slippage once, on entry. It is fully invested even when the strategy's position fraction is lower. The chart draws both equity curves.
+- Total return and CAGR are compounded. CAGR, Sharpe, and Sortino use 252 trading days and a risk-free rate of zero. Sharpe and Sortino are left blank when volatility or downside deviation is zero. They are not reported as infinity.
+- Excess total return is `(1 + strategy) / (1 + buy-and-hold) - 1`, not the difference of the two total returns. Alpha is daily Jensen alpha with rf = 0, annualized by × 252. Beta is the OLS slope of the two daily return series.
+- The last open is not marked, because there is no following open. A signal on the final bar is not filled. A terminal bar with no fill is left out of the annualized statistics. An exit on that last open is still charged.
+- Closed trades are round trips. A position still open at the end stays in the equity curve and is not counted as a win or a loss. Time in market is the share of completed open-to-open bars that were long.
+- Strategy parameters are whatever you set on the page. They are not chosen out of sample.
 
 ## Filings and fundamentals
 
@@ -42,7 +44,7 @@ The screenshots are interface previews. They are not an audited track record, an
 - The insider score is a description of filings already public on the as-of date (unique buyers, unique sellers, and a cluster of three or more buyers). It is not a return forecast. Institutional holdings are not an input.
 - The screener uses the latest Yahoo snapshot. That snapshot is not a historical filing. `latest_released` will not accept a `period_end` in place of an `available_date`, so an unreported quarter cannot be treated as known.
 - Field units from the current quote summary: dividend yield is already a percent (2.43 means 2.43%). ROE, margins, growth, and payout ratio are fractions and are stored as percents. Debt/equity is Yahoo's percent figure divided by 100. A blank insider row, or a "Stock Gift", is not counted as a purchase.
-- A 13F is due 45 days after quarter end. The institutional table is the latest vendor snapshot and is not a backtest. Do not treat the quarter-end date as the public date.
+- A 13F is due 45 days after quarter end. In the current yfinance table, `Date Reported` falls on quarter ends (not on the filing day in the following month). The insider page keeps a row only when that quarter end plus 45 days, rolled from a weekend onto Monday, is on or before the as-of date. Exchange holidays are not rolled. The table is still not a returns backtest. A row with no period end is withheld.
 
 ## Survivorship bias
 
@@ -64,10 +66,10 @@ streamlit run app.py
 
 Open http://localhost:8501.
 
-Tests (network is mocked):
+Tests (network is mocked). Dependencies are pinned. `requirements.txt` is the app. `requirements-dev.txt` adds the test runner:
 
 ~~~bash
-pip install pytest
+pip install -r requirements-dev.txt
 python -m pytest -q
 ~~~
 
@@ -95,6 +97,7 @@ yfinance does not need a key. Do not put tokens in source. `.env` and `.streamli
 ├── pages/
 ├── tests/
 ├── requirements.txt
+├── requirements-dev.txt
 └── .github/workflows/ci.yml
 ~~~
 

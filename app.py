@@ -173,7 +173,7 @@ if watchlist:
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
-                st.plotly_chart(spark, use_container_width=True, config={"displayModeBar": False})
+                st.plotly_chart(spark, config={"displayModeBar": False})
 
             except DataFetchError as exc:
                 col.warning(f"{ticker}: {exc}")
@@ -208,7 +208,7 @@ with qa_cols[2]:
     <div class='ticker-card' style='text-align:center; cursor:pointer;'>
         <div style='font-size:2rem;'>🕵️</div>
         <div style='color:#10b981; font-weight:600; margin:6px 0;'>Insider Tracker</div>
-        <div style='color:#64748b; font-size:0.78rem;'>Score insider & institutional
-        signals. Find cluster-buy opportunities.</div>
+        <div style='color:#64748b; font-size:0.78rem;'>Score insider filings after
+        the public date. 13F rows wait until 45 days after quarter end.</div>
     </div>
     """, unsafe_allow_html=True)

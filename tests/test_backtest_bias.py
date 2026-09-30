@@ -117,6 +117,108 @@ def test_strategy_values_do_not_change_when_a_future_price_is_appended():
         )
 
 
+def test_terminal_flat_bar_is_not_an_annualization_period():
+    index = pd.to_datetime(["2024-01-02", "2024-01-03", "2024-01-04", "2024-01-05"])
+    opens = pd.Series([10.0, 10.0, 10.0, 20.0], index=index)
+    signal = pd.Series([0.0, 1.0, 1.0, 1.0], index=index)
+    result = simulate_long_flat(opens, signal, initial_capital=100_000)
+    assert result["metrics"]["total_return"] == pytest.approx(1.0)
+    assert result["metrics"]["n_periods"] == len(opens) - 1
+    assert result["equity"].iloc[-1] == pytest.approx(200_000)
+    assert result["metrics"]["total_return"] == pytest.approx(result["equity"].iloc[-1] / 100_000 - 1)
+    wealth = 1.0 + result["metrics"]["total_return"]
+    expected_cagr = wealth ** (252 / result["metrics"]["n_periods"]) - 1.0
+    assert result["metrics"]["cagr"] == pytest.approx(expected_cagr)
+    assert result["metrics"]["time_in_market"] == pytest.approx(1.0 / 3.0)
+
+
+def test_exit_cost_on_the_final_open_stays_in_the_total_return():
+    index = pd.to_datetime(["2024-01-02", "2024-01-03", "2024-01-04", "2024-01-05"])
+    opens = pd.Series([10.0, 10.0, 10.0, 10.0], index=index)
+    signal = pd.Series([1.0, 1.0, 0.0, 0.0], index=index)
+    cost = 0.002
+    result = simulate_long_flat(opens, signal, commission=0.001, slippage=0.001)
+    # Entry on the second open, exit on the last open. Both costs count.
+    assert result["metrics"]["n_trades"] == 1
+    assert result["metrics"]["total_return"] == pytest.approx((1 - cost) * (1 - cost) - 1)
+    assert result["metrics"]["n_periods"] == len(opens)
+
+
+def test_buy_and_hold_earns_the_move_the_lagged_signal_misses():
+    index = pd.to_datetime(["2024-01-02", "2024-01-03", "2024-01-04", "2024-01-05"])
+    frame = pd.DataFrame(
+        {"open": [10.0, 10.0, 20.0, 20.0], "close": [10.0, 10.0, 20.0, 20.0]},
+        index=index,
+    )
+    cost = 0.002
+    result = run_backtest(
+        frame,
+        "SMA Crossover",
+        {"fast_period": 1, "slow_period": 2},
+        initial_capital=50_000,
+        commission=0.001,
+        slippage=0.001,
+        position_fraction=0.5,
+    )
+    assert result["metrics"]["benchmark_total_return"] == pytest.approx(1.0 - cost)
+    assert result["benchmark_equity"].iloc[-1] == pytest.approx(50_000 * (2.0 - cost))
+    strategy_wealth = 1.0 + result["metrics"]["total_return"]
+    benchmark_wealth = 1.0 + result["metrics"]["benchmark_total_return"]
+    assert result["metrics"]["excess_total_return"] == pytest.approx(strategy_wealth / benchmark_wealth - 1.0)
+    assert result["metrics"]["benchmark_total_return"] > result["metrics"]["total_return"]
+    assert result["metrics"]["alpha"] is not None
+    assert result["metrics"]["beta"] is not None
+
+
+def test_shuffled_rows_match_the_calendar_order():
+    index = pd.bdate_range("2024-01-02", periods=40)
+    generator = np.random.default_rng(11)
+    close = pd.Series(50 + generator.normal(0, 1, len(index)).cumsum(), index=index)
+    frame = pd.DataFrame({"open": close * 0.99, "close": close})
+    shuffled = frame.sample(frac=1.0, random_state=3)
+    ordered = run_backtest(frame, "EMA Crossover", {"fast_period": 4, "slow_period": 12})
+    scrambled = run_backtest(shuffled, "EMA Crossover", {"fast_period": 4, "slow_period": 12})
+    assert scrambled["metrics"]["total_return"] == pytest.approx(ordered["metrics"]["total_return"])
+    assert scrambled["metrics"]["benchmark_total_return"] == pytest.approx(ordered["metrics"]["benchmark_total_return"])
+    pd.testing.assert_series_equal(
+        scrambled["signal"].sort_index(),
+        ordered["signal"].sort_index(),
+        check_names=False,
+        check_freq=False,
+    )
+
+
+def test_duplicate_timestamps_are_rejected():
+    frame = pd.DataFrame(
+        {"open": [10.0, 11.0], "close": [10.0, 11.0]},
+        index=pd.to_datetime(["2024-01-02", "2024-01-02"]),
+    )
+    with pytest.raises(ValueError, match="duplicate"):
+        run_backtest(frame, "SMA Crossover", {"fast_period": 1, "slow_period": 2})
+
+
+def test_completed_intervals_do_not_change_when_a_future_bar_is_appended():
+    index = pd.bdate_range("2024-01-02", periods=30)
+    generator = np.random.default_rng(7)
+    close = pd.Series(100 + generator.normal(0, 1, len(index)).cumsum(), index=index)
+    close.iloc[-1] = close.iloc[-2] + 25.0
+    frame = pd.DataFrame({"open": close, "close": close})
+    params = {"fast_period": 3, "slow_period": 8}
+    short = run_backtest(frame.iloc[:-1], "SMA Crossover", params)
+    long = run_backtest(frame, "SMA Crossover", params)
+    # Bars that already had a next open keep their return. The old last bar did not.
+    pd.testing.assert_series_equal(
+        short["returns"].iloc[:-1],
+        long["returns"].iloc[:-2],
+        check_names=False,
+    )
+    held = simulate_long_flat(frame["open"], pd.Series(1.0, index=frame.index))
+    unmarked = simulate_long_flat(frame["open"].iloc[:-1], pd.Series(1.0, index=frame.index[:-1]))
+    assert unmarked["returns"].iloc[-1] == pytest.approx(0.0)
+    jump = frame["open"].iloc[-1] / frame["open"].iloc[-2] - 1.0
+    assert held["returns"].iloc[-2] == pytest.approx(jump)
+
+
 def test_fast_period_must_be_shorter_than_slow():
     frame = _ohlc(pd.Series([1.0, 2.0, 3.0, 4.0]))
     with pytest.raises(ValueError):

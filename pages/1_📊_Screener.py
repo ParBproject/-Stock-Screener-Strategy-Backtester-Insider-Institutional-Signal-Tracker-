@@ -22,7 +22,7 @@ from utils.indicators import rsi
 st.markdown("### Stock screener")
 st.caption(
     "This is a current snapshot. A missing field fails the filter. "
-    "price_change_52w is the change from the first to the last adjusted close in the fetched window (about a year). "
+    "price_change_52w is the total change, dividends included, from the first to the last adjusted close in the fetched window (about a year). "
     "The ticker list is names that trade today, so it has survivorship bias "
     "and is not point-in-time S&P 500 membership. It is not a historical factor backtest."
 )
@@ -79,7 +79,7 @@ if st.button("Run screen", type="primary", disabled=not tickers):
         frame = pd.DataFrame(rows)
         kept = apply_filters(frame, criteria) if criteria else frame
         st.write(f"{len(kept)} of {len(frame)} snapshots passed.")
-        st.dataframe(kept, use_container_width=True)
+        st.dataframe(kept)
         st.download_button(
             "Download CSV",
             kept.to_csv(index=False).encode("utf-8"),

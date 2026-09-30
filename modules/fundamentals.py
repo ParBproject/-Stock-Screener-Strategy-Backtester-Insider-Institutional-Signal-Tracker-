@@ -26,8 +26,17 @@ def latest_released(filings: pd.DataFrame, asof) -> pd.Series | None:
     known = frame.loc[published <= decision].copy()
     if known.empty:
         return None
-    known = known.assign(_published=published.loc[known.index]).sort_values("_published")
-    return known.drop(columns="_published").iloc[-1]
+    known = known.assign(_published=published.loc[known.index])
+    sort_by = ["_published"]
+    if "period_end" in known.columns:
+        # Same public date: the later fiscal period is the newer report.
+        known["_period_end"] = known["period_end"].map(_naive_day)
+        sort_by.append("_period_end")
+    known["_order"] = range(len(known))
+    sort_by.append("_order")
+    known = known.sort_values(sort_by, kind="mergesort")
+    drop = [column for column in ("_published", "_period_end", "_order") if column in known.columns]
+    return known.drop(columns=drop).iloc[-1]
 
 
 def _naive_day(value) -> pd.Timestamp:

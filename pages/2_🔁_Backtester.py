@@ -33,9 +33,11 @@ def _num(value) -> str:
 st.markdown("### Strategy backtester")
 st.caption(
     "A signal may use that bar's close. The fill is the next session's open. "
-    "Commission and slippage are charged on turnover. Prices are split-adjusted. "
-    "The last bar is not marked, because there is no following open. "
+    "Commission and slippage are charged on turnover. Prices are adjusted for splits and dividends. "
+    "The last open is not marked, because there is no following open, and that empty day is left out of Sharpe and CAGR. "
+    "Buy and hold uses the same fills and the same costs, fully invested. "
     "Figures below are calculated from the series downloaded for this run. "
+    "Parameters are chosen on this sample, not walk-forward. "
     "This page does not publish a track record."
 )
 
@@ -120,21 +122,39 @@ if st.button("Run backtest", type="primary"):
             labels = [
                 ("Total return", _pct(metrics["total_return"])),
                 ("CAGR", _pct(metrics["cagr"])),
-                ("Sharpe", _num(metrics["sharpe"])),
-                ("Sortino", _num(metrics["sortino"])),
+                ("Sharpe (rf = 0)", _num(metrics["sharpe"])),
+                ("Sortino (rf = 0)", _num(metrics["sortino"])),
                 ("Calmar", _num(metrics["calmar"])),
                 ("Max drawdown", _pct(metrics["max_drawdown"])),
                 ("Win rate", _pct(metrics["win_rate"])),
                 ("Profit factor", _num(metrics["profit_factor"])),
                 ("Closed trades", "0" if metrics["n_trades"] is None else str(metrics["n_trades"])),
+                ("Time in market", _pct(metrics.get("time_in_market"))),
+                ("Buy & hold return", _pct(metrics.get("benchmark_total_return"))),
+                ("Buy & hold CAGR", _pct(metrics.get("benchmark_cagr"))),
+                ("Excess total return", _pct(metrics.get("excess_total_return"))),
+                ("Alpha (rf = 0)", _pct(metrics.get("alpha"))),
+                ("Beta", _num(metrics.get("beta"))),
             ]
             columns = st.columns(3)
             for index, (label, text) in enumerate(labels):
                 columns[index % 3].metric(label, text)
-            st.plotly_chart(equity_curve_chart(result["equity"], title=f"{ticker} {strategy}"), use_container_width=True)
+            st.caption(
+                "Excess total return is the wealth ratio minus one, not the difference of the two total returns. "
+                "Alpha is Jensen's alpha with a zero risk-free rate, annualized by multiplying the daily alpha by 252. "
+                "Time in market is the share of completed open-to-open bars with a long position. "
+                "An open trade is in the equity curve and is not in the win rate."
+            )
+            st.plotly_chart(
+                equity_curve_chart(
+                    result["equity"],
+                    benchmark=result.get("benchmark_equity"),
+                    title=f"{ticker} {strategy}",
+                ),
+            )
             if result["trades"].empty:
                 st.info("No closed trade in this window. An open position is still in the equity curve.")
             else:
                 trades = result["trades"].copy()
                 trades["return"] = trades["return"].map(lambda value: f"{value * 100:.2f}%")
-                st.dataframe(trades, use_container_width=True)
+                st.dataframe(trades)
