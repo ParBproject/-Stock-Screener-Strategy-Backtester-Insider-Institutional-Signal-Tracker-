@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 from config import TRADING_DAYS_PER_YEAR
-from modules.performance import performance_from_returns
+from modules.performance import geometric_excess, performance_from_returns
 
 
 def test_total_return_compounds_instead_of_summing():
@@ -44,6 +44,14 @@ def test_sortino_uses_root_mean_square_downside():
     downside = math.sqrt((0.01 ** 2) / 3)
     expected = mean / downside * math.sqrt(TRADING_DAYS_PER_YEAR)
     assert stats["sortino"] == pytest.approx(expected)
+
+
+def test_geometric_excess_is_the_wealth_ratio():
+    assert geometric_excess(0.21, 0.10) == pytest.approx(1.21 / 1.10 - 1.0)
+    assert geometric_excess(0.21, 0.10) != pytest.approx(0.11)
+    assert geometric_excess(0.10, 0.10) == pytest.approx(0.0)
+    assert geometric_excess(None, 0.10) is None
+    assert geometric_excess(-1.0, 0.10) is None
 
 
 def test_alpha_beta_against_a_benchmark():

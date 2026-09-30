@@ -36,8 +36,16 @@ def filing_available_date(transaction_date, filing_date=None) -> pd.Timestamp:
 
 
 def thirteen_f_public_date(period_end) -> pd.Timestamp:
-    """Date a quarter-end 13F holding may be treated as public."""
-    return _naive_day(period_end) + pd.Timedelta(days=THIRTEEN_F_LAG_DAYS)
+    """Date a quarter-end 13F holding may be treated as public.
+
+    The statutory deadline is 45 calendar days after quarter end. When that
+    day is a Saturday or Sunday, the due date moves to Monday. Exchange
+    holidays are not rolled forward.
+    """
+    stamp = _naive_day(period_end) + pd.Timedelta(days=THIRTEEN_F_LAG_DAYS)
+    while stamp.weekday() >= 5:
+        stamp += pd.Timedelta(days=1)
+    return stamp
 
 
 def standardize_transactions(raw: pd.DataFrame | None) -> pd.DataFrame:
@@ -161,15 +169,30 @@ def insider_long_signal(
 
 
 def institutional_visible(holders: pd.DataFrame, asof, period_column: str = "period_end") -> pd.DataFrame:
-    """Keep 13F rows whose quarter-end plus 45 days is on or before ``asof``."""
+    """Keep 13F rows whose quarter-end plus the filing lag is on or before ``asof``.
+
+    Yahoo's institutional table labels the quarter end ``Date Reported``.
+    That stamp is not the SEC filing date. Rows with no period end are
+    dropped: a holding we cannot date is not treated as already public.
+    ``public_date`` on the result is the first day the row may be used.
+    """
     if holders is None or len(holders) == 0:
-        return pd.DataFrame(columns=[] if holders is None else holders.columns)
-    if period_column not in holders.columns:
-        raise ValueError(f"holders must include {period_column}")
-    decision = _naive_day(asof)
+        return pd.DataFrame(columns=[] if holders is None else list(getattr(holders, "columns", [])))
     frame = holders.copy()
-    public = frame[period_column].map(thirteen_f_public_date)
-    return frame.loc[public <= decision].drop(columns=[], errors="ignore")
+    frame.columns = [str(column) for column in frame.columns]
+    column = period_column if period_column in frame.columns else _first_column(
+        frame, ["period_end", "Date Reported", "reportDate"]
+    )
+    if column is None:
+        raise ValueError("institutional holders have no quarter-end date column")
+    decision = _naive_day(asof)
+    dated = frame.loc[~frame[column].map(_is_missing)].copy()
+    if dated.empty:
+        return dated
+    public = dated[column].map(thirteen_f_public_date)
+    visible = dated.loc[public <= decision].copy()
+    visible["public_date"] = public.loc[visible.index]
+    return visible
 
 
 def _prepare(transactions: pd.DataFrame | None) -> pd.DataFrame:
