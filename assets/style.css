@@ -1,0 +1,11 @@
+.page-header h1 {
+    margin-bottom: 0.15rem;
+}
+
+.ticker-card {
+    background: #111827;
+    border: 1px solid #1e2d45;
+    border-radius: 10px;
+    padding: 0.75rem 0.9rem 0.35rem;
+    margin-bottom: 0.35rem;
+}
