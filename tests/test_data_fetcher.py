@@ -40,6 +40,27 @@ def test_price_request_uses_adjusted_bars_and_an_inclusive_end(monkeypatch):
     assert list(frame["close"]) == [10.5, 11.5]
 
 
+def test_raw_and_adjusted_close_are_not_mixed_across_a_split():
+    """A 2-for-1 split must not look like a 40% crash when Adj Close is present."""
+    raw = pd.DataFrame(
+        {
+            "Open": [10.0, 6.0],
+            "High": [11.0, 7.0],
+            "Low": [9.0, 5.0],
+            "Close": [10.0, 6.0],
+            "Adj Close": [10.0, 12.0],
+            "Volume": [100, 200],
+        },
+        index=pd.to_datetime(["2024-01-02", "2024-01-03"]),
+    )
+    normalized = normalize_ohlcv(raw)
+    assert list(normalized["close"]) == [10.0, 12.0]
+    assert list(normalized["open"]) == [10.0, 12.0]
+    assert normalized["open"].iloc[1] / normalized["open"].iloc[0] - 1.0 == pytest.approx(0.20)
+    assert "adj_close" not in normalized.columns
+    assert list(normalized["volume"]) == [100, 200]
+
+
 def test_multiindex_yahoo_frames_collapse_to_ohlcv():
     by_price = pd.MultiIndex.from_tuples([("Open", "AAPL"), ("Close", "AAPL"), ("High", "AAPL"), ("Low", "AAPL")])
     prices = pd.DataFrame([[1, 2, 1, 1]], columns=by_price)

@@ -39,7 +39,8 @@ TRADING_DAYS_PER_YEAR = 252
 FORM4_BUSINESS_DAY_LAG = 2
 
 # A 13F is due 45 calendar days after quarter end. The quarter-end date itself
-# is not a public date.
+# is not a public date. A deadline that falls on a weekend is the next Monday.
+# Exchange holidays are not rolled.
 THIRTEEN_F_LAG_DAYS = 45
 
 # ── Universe of tickers for screener ─────────────────────────────────────────

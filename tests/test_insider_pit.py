@@ -121,4 +121,68 @@ def test_thirteen_f_is_not_public_on_the_quarter_end():
     assert thirteen_f_public_date(period_end) == pd.Timestamp("2024-05-15")
     holders = pd.DataFrame({"holder": ["Fund"], "period_end": [period_end], "shares": [100]})
     assert institutional_visible(holders, "2024-05-14").empty
-    assert len(institutional_visible(holders, "2024-05-15")) == 1
+    visible = institutional_visible(holders, "2024-05-15")
+    assert len(visible) == 1
+    assert visible["public_date"].iloc[0] == pd.Timestamp("2024-05-15")
+
+
+def test_thirteen_f_weekend_deadline_moves_to_monday():
+    # 2015-12-31 plus 45 days is Sunday 2016-02-14. The due date is Monday.
+    assert thirteen_f_public_date("2015-12-31") == pd.Timestamp("2016-02-15")
+    assert institutional_visible(
+        pd.DataFrame({"period_end": ["2015-12-31"], "shares": [1]}),
+        "2016-02-14",
+    ).empty
+
+
+def test_yahoo_date_reported_is_treated_as_the_quarter_end():
+    """Date Reported on the live institutional table lines up on quarter ends."""
+    holders = pd.DataFrame(
+        {
+            "Date Reported": [pd.Timestamp("2026-06-30"), pd.Timestamp("2026-06-30")],
+            "Holder": ["Blackrock Inc.", "Vanguard"],
+            "Shares": [100, 80],
+        }
+    )
+    assert institutional_visible(holders, "2026-07-01").empty
+    visible = institutional_visible(holders, "2026-08-14")
+    assert len(visible) == 2
+    assert set(visible["public_date"]) == {pd.Timestamp("2026-08-14")}
+
+
+def test_institutional_rows_without_a_period_end_are_withheld():
+    dated = pd.DataFrame({"Date Reported": [pd.Timestamp("2024-03-31"), pd.NaT], "Shares": [1, 2]})
+    visible = institutional_visible(dated, "2024-05-15")
+    assert len(visible) == 1
+    with pytest.raises(ValueError, match="quarter-end"):
+        institutional_visible(pd.DataFrame({"Holder": ["Fund"], "Shares": [1]}), "2024-05-15")
+
+
+def test_same_day_fundamentals_keep_the_later_fiscal_period():
+    filings = pd.DataFrame(
+        {
+            "period_end": ["2024-03-31", "2024-06-30"],
+            "available_date": ["2024-08-01", "2024-08-01"],
+            "pe": [10.0, 12.0],
+        }
+    )
+    reversed_rows = filings.iloc[::-1].reset_index(drop=True)
+    assert latest_released(filings, "2024-08-01")["pe"] == 12.0
+    assert latest_released(reversed_rows, "2024-08-01")["pe"] == 12.0
+
+
+def test_vendor_sale_text_is_used_when_the_transaction_column_is_blank():
+    raw = pd.DataFrame(
+        {
+            "Start Date": ["2024-01-08", "2024-01-08"],
+            "Insider": ["Ada", "Ada"],
+            "Position": ["Officer", "Officer"],
+            "Transaction": ["", ""],
+            "Text": ["Sale at price 10.00 per share.", ""],
+            "Shares": [10, 50],
+            "Ownership": ["D", "D"],
+        }
+    )
+    out = standardize_transactions(raw)
+    assert out["side"].tolist() == ["sell", "other"]
+    assert list(out["available_date"]) == [pd.Timestamp("2024-01-10"), pd.Timestamp("2024-01-10")]

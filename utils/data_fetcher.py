@@ -2,8 +2,9 @@
 
 Network calls live here so tests can replace ``yfinance`` without rendering
 the app. Adjusted prices are requested on purpose: raw closes jump on splits
-and would distort return math. The ``end`` date passed by callers is
-inclusive; Yahoo's ``end`` is exclusive, so one day is added before download.
+and omit dividends, which would distort return math. The ``end`` date passed
+by callers is inclusive; Yahoo's ``end`` is exclusive, so one day is added
+before download.
 """
 
 from __future__ import annotations
@@ -22,7 +23,10 @@ class DataFetchError(Exception):
 
 
 def fetch_price_history(ticker: str, start: str, end: str) -> pd.DataFrame:
-    """Daily OHLCV from ``start`` through ``end``, inclusive, split-adjusted."""
+    """Daily OHLCV from ``start`` through ``end``, inclusive.
+
+    Prices are split- and dividend-adjusted (``auto_adjust=True``).
+    """
     symbol = _clean_ticker(ticker)
     start_text = pd.Timestamp(start).strftime("%Y-%m-%d")
     end_exclusive = (pd.Timestamp(end) + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
@@ -112,12 +116,23 @@ def normalize_ohlcv(frame: pd.DataFrame | None) -> pd.DataFrame:
             "_".join(str(part) for part in column if str(part)) for column in out.columns
         ]
     out.columns = [str(column).strip().lower().replace(" ", "_") for column in out.columns]
-    if "close" not in out.columns and "adj_close" in out.columns:
+    for column in ("open", "high", "low", "close", "adj_close", "volume"):
+        if column in out.columns:
+            out[column] = pd.to_numeric(out[column], errors="coerce")
+    # A raw Yahoo frame has Close and Adj Close. Using the raw close across a
+    # split books a crash that did not happen. auto_adjust already folds this
+    # ratio in; if both columns are still here, do it before the backtest.
+    if "adj_close" in out.columns and "close" in out.columns:
+        raw_close = out["close"].mask(out["close"] == 0)
+        factor = out["adj_close"] / raw_close
+        for column in ("open", "high", "low"):
+            if column in out.columns:
+                out[column] = out[column] * factor
+        out["close"] = out["adj_close"]
+    elif "close" not in out.columns and "adj_close" in out.columns:
         out = out.rename(columns={"adj_close": "close"})
     keep = [column for column in _OHLCV if column in out.columns]
     out = out.loc[:, keep]
-    for column in keep:
-        out[column] = pd.to_numeric(out[column], errors="coerce")
     if isinstance(out.index, pd.DatetimeIndex) and out.index.tz is not None:
         out.index = out.index.tz_localize(None)
     required = [column for column in ("open", "close") if column in out.columns]
@@ -131,9 +146,10 @@ def normalize_yahoo_info(info: dict) -> dict:
 
     Growth, margins, and payout ratio on Yahoo's quote summary are fractions
     (0.015 means 1.5%) and are stored as percents. ``dividendYield`` is
-    already a percent (2.43 means 2.43%, and a sub-1% yield such as 0.32
-    stays 0.32). ``debtToEquity`` is a percent (150 means 1.50x) and is
-    stored as a ratio. Screen presets use those units.
+    already a percent (AAPL prints 0.32, meaning 0.32%). ``trailingAnnualDividendYield``
+    is the fraction (about 0.003) and is not used. ``debtToEquity`` is a
+    percent (150 means 1.50x) and is stored as a ratio. Screen presets use
+    those units.
     """
     return {
         "name": _text(info.get("shortName") or info.get("longName")),
