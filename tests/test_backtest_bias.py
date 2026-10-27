@@ -1,4 +1,4 @@
-"""Pins the execution rule: a close signal is filled at the next open."""
+"""A close signal fills at the next open."""
 
 import numpy as np
 import pandas as pd

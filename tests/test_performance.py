@@ -1,4 +1,4 @@
-"""Pins for compounded returns and 252-day annualization."""
+"""Compounded returns and 252-day annualization."""
 
 import math
 

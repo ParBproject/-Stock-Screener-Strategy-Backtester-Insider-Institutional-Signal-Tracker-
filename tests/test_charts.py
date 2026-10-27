@@ -1,4 +1,4 @@
-"""The equity chart has to show the benchmark, not only the strategy."""
+"""Equity chart includes buy-and-hold when a benchmark series is passed."""
 
 import pandas as pd
 

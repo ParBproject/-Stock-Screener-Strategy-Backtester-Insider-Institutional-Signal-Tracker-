@@ -1,14 +1,10 @@
-"""
-app.py — FinTools Pro main entry point & home dashboard.
-Run with:  streamlit run app.py
-"""
+"""Home page. Run with: streamlit run app.py"""
 
 import streamlit as st
 import plotly.graph_objects as go
 from datetime import date, timedelta
 from pathlib import Path
 
-# ── Page config (must be first Streamlit call) ────────────────────────────────
 st.set_page_config(
     page_title="FinTools Pro",
     page_icon="📈",
@@ -16,7 +12,6 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── Inject CSS ────────────────────────────────────────────────────────────────
 css_path = Path(__file__).parent / "assets" / "style.css"
 if css_path.exists():
     st.markdown(f"<style>{css_path.read_text()}</style>", unsafe_allow_html=True)
@@ -24,7 +19,6 @@ if css_path.exists():
 from utils.data_fetcher import DataFetchError, get_price_history, get_realtime_price, get_fundamentals
 from config import THEME
 
-# ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("""
     <div style='text-align:center; padding: 1rem 0;'>
@@ -33,7 +27,7 @@ with st.sidebar:
             📈 FINTOOLS PRO
         </div>
         <div style='color:#64748b; font-size:0.72rem; margin-top:4px;'>
-            Trading Intelligence Platform
+            Screener, backtester, filings
         </div>
     </div>
     <hr style='border-color:#1e2d45; margin: 0.5rem 0 1rem;'/>
@@ -54,7 +48,6 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-# ── Header ────────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class='page-header'>
     <h1>🏠 Home Dashboard</h1>
@@ -62,7 +55,6 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ── Market Overview ───────────────────────────────────────────────────────────
 INDICES = {
     "S&P 500":  "^GSPC",
     "NASDAQ":   "^IXIC",
@@ -96,11 +88,10 @@ for col, (name, sym) in zip(cols, INDICES.items()):
 
 st.divider()
 
-# ── Watchlist Sparklines ──────────────────────────────────────────────────────
 st.markdown("#### 🔭 Watchlist")
 
 DEFAULT_WATCH = ["AAPL", "MSFT", "NVDA", "TSLA", "AMZN", "META"]
-st.caption("Daily closes from the vendor. The list is a static set of names that trade today, not a survivorship-free universe.")
+st.caption("Daily closes. The choices are names that trade today.")
 watchlist = st.multiselect(
     "Add tickers to watchlist:",
     options=["AAPL","MSFT","GOOGL","AMZN","META","NVDA","TSLA","JPM","V","NFLX",
@@ -182,7 +173,6 @@ if watchlist:
 
 st.divider()
 
-# ── Quick Access ──────────────────────────────────────────────────────────────
 st.markdown("#### ⚡ Quick Tools")
 qa_cols = st.columns(3)
 with qa_cols[0]:
@@ -190,8 +180,8 @@ with qa_cols[0]:
     <div class='ticker-card' style='text-align:center; cursor:pointer;'>
         <div style='font-size:2rem;'>📊</div>
         <div style='color:#00d4ff; font-weight:600; margin:6px 0;'>Stock Screener</div>
-        <div style='color:#64748b; font-size:0.78rem;'>Filter 60+ tickers by fundamentals,
-        technicals & custom criteria</div>
+        <div style='color:#64748b; font-size:0.78rem;'>Filter a fixed list of names
+        on the latest fundamentals and a few technicals</div>
     </div>
     """, unsafe_allow_html=True)
 with qa_cols[1]:
@@ -199,8 +189,8 @@ with qa_cols[1]:
     <div class='ticker-card' style='text-align:center; cursor:pointer;'>
         <div style='font-size:2rem;'>🔁</div>
         <div style='color:#7c3aed; font-weight:600; margin:6px 0;'>Strategy Backtester</div>
-        <div style='color:#64748b; font-size:0.78rem;'>Test 5 built-in strategies
-        on a ticker and date range you choose</div>
+        <div style='color:#64748b; font-size:0.78rem;'>Run SMA, EMA, RSI, MACD,
+        or Bollinger on one ticker</div>
     </div>
     """, unsafe_allow_html=True)
 with qa_cols[2]:
@@ -208,7 +198,7 @@ with qa_cols[2]:
     <div class='ticker-card' style='text-align:center; cursor:pointer;'>
         <div style='font-size:2rem;'>🕵️</div>
         <div style='color:#10b981; font-weight:600; margin:6px 0;'>Insider Tracker</div>
-        <div style='color:#64748b; font-size:0.78rem;'>Score insider filings after
-        the public date. 13F rows wait until 45 days after quarter end.</div>
+        <div style='color:#64748b; font-size:0.78rem;'>Insider filings after the
+        public date, and 13F rows after the 45-day lag</div>
     </div>
     """, unsafe_allow_html=True)

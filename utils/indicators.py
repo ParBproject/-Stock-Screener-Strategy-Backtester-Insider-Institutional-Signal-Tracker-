@@ -1,9 +1,4 @@
-"""Causal technical indicators.
-
-Every value at time t uses prices at t and earlier only. Rolling windows use
-``center=False``. These series may be read at the close of bar t; the
-backtester is responsible for trading them on a later bar.
-"""
+"""Technical indicators. Each value uses that bar and earlier bars only."""
 
 from __future__ import annotations
 

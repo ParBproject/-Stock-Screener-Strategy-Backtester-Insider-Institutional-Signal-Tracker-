@@ -1,4 +1,4 @@
-"""Current fundamental and technical screen. Not a historical factor backtest."""
+"""Filter a fixed ticker list on the latest snapshot."""
 
 from __future__ import annotations
 
@@ -21,10 +21,9 @@ from utils.indicators import rsi
 
 st.markdown("### Stock screener")
 st.caption(
-    "This is a current snapshot. A missing field fails the filter. "
-    "price_change_52w is the total change, dividends included, from the first to the last adjusted close in the fetched window (about a year). "
-    "The ticker list is names that trade today, so it has survivorship bias "
-    "and is not point-in-time S&P 500 membership. It is not a historical factor backtest."
+    "Current snapshot. A missing field fails the filter. "
+    "The 52-week change is the adjusted close over the fetched window, about a year, dividends included. "
+    "The ticker list is names that trade today, not historical index membership."
 )
 
 preset_name = st.selectbox("Preset", ["Custom", *PRESETS.keys()])
@@ -74,7 +73,7 @@ if st.button("Run screen", type="primary", disabled=not tickers):
     for message in errors:
         st.warning(message)
     if not rows:
-        st.error("No snapshots came back. Nothing is filled in with sample data.")
+        st.error("No data came back for those tickers.")
     else:
         frame = pd.DataFrame(rows)
         kept = apply_filters(frame, criteria) if criteria else frame
