@@ -1,10 +1,7 @@
-"""yfinance access with retries and a one-hour Streamlit cache.
+"""yfinance access, with retries and a one-hour cache.
 
-Network calls live here so tests can replace ``yfinance`` without rendering
-the app. Adjusted prices are requested on purpose: raw closes jump on splits
-and omit dividends, which would distort return math. The ``end`` date passed
-by callers is inclusive; Yahoo's ``end`` is exclusive, so one day is added
-before download.
+Prices are split- and dividend-adjusted. Callers pass an inclusive end date;
+Yahoo's end is exclusive, so one day is added before download.
 """
 
 from __future__ import annotations
@@ -119,9 +116,8 @@ def normalize_ohlcv(frame: pd.DataFrame | None) -> pd.DataFrame:
     for column in ("open", "high", "low", "close", "adj_close", "volume"):
         if column in out.columns:
             out[column] = pd.to_numeric(out[column], errors="coerce")
-    # A raw Yahoo frame has Close and Adj Close. Using the raw close across a
-    # split books a crash that did not happen. auto_adjust already folds this
-    # ratio in; if both columns are still here, do it before the backtest.
+    # If both closes are present, scale OHLC by Adj Close / Close so a split
+    # is not booked as a crash. auto_adjust usually does this already.
     if "adj_close" in out.columns and "close" in out.columns:
         raw_close = out["close"].mask(out["close"] == 0)
         factor = out["adj_close"] / raw_close
@@ -144,12 +140,9 @@ def normalize_ohlcv(frame: pd.DataFrame | None) -> pd.DataFrame:
 def normalize_yahoo_info(info: dict) -> dict:
     """Map a Yahoo ``info`` dict into screen columns.
 
-    Growth, margins, and payout ratio on Yahoo's quote summary are fractions
-    (0.015 means 1.5%) and are stored as percents. ``dividendYield`` is
-    already a percent (AAPL prints 0.32, meaning 0.32%). ``trailingAnnualDividendYield``
-    is the fraction (about 0.003) and is not used. ``debtToEquity`` is a
-    percent (150 means 1.50x) and is stored as a ratio. Screen presets use
-    those units.
+    Growth, margins, and payout ratio arrive as fractions and are stored as
+    percents. ``dividendYield`` is stored as given. ``debtToEquity`` arrives
+    as a percent and is stored as a ratio.
     """
     return {
         "name": _text(info.get("shortName") or info.get("longName")),

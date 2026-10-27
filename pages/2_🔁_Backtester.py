@@ -1,4 +1,4 @@
-"""Strategy backtest. Fills are the next open. Metrics are computed for this run only."""
+"""One long/flat backtest on the prices downloaded for this run."""
 
 from __future__ import annotations
 
@@ -32,13 +32,10 @@ def _num(value) -> str:
 
 st.markdown("### Strategy backtester")
 st.caption(
-    "A signal may use that bar's close. The fill is the next session's open. "
-    "Commission and slippage are charged on turnover. Prices are adjusted for splits and dividends. "
-    "The last open is not marked, because there is no following open, and that empty day is left out of Sharpe and CAGR. "
-    "Buy and hold uses the same fills and the same costs, fully invested. "
-    "Figures below are calculated from the series downloaded for this run. "
-    "Parameters are chosen on this sample, not walk-forward. "
-    "This page does not publish a track record."
+    "The signal can use that day's close. The fill is the next open. "
+    "Costs are charged when the position changes. "
+    "Buy and hold is the same ticker, fully invested, with the same costs on entry. "
+    "The numbers are for this run."
 )
 
 ticker = st.text_input("Ticker", value="AAPL").strip().upper()
@@ -140,10 +137,9 @@ if st.button("Run backtest", type="primary"):
             for index, (label, text) in enumerate(labels):
                 columns[index % 3].metric(label, text)
             st.caption(
-                "Excess total return is the wealth ratio minus one, not the difference of the two total returns. "
-                "Alpha is Jensen's alpha with a zero risk-free rate, annualized by multiplying the daily alpha by 252. "
-                "Time in market is the share of completed open-to-open bars with a long position. "
-                "An open trade is in the equity curve and is not in the win rate."
+                "Excess return is ending wealth divided by buy-and-hold wealth, minus one. "
+                "Alpha uses a zero risk-free rate. "
+                "A trade still open at the end is in the equity curve and not in the win rate."
             )
             st.plotly_chart(
                 equity_curve_chart(

@@ -1,1 +1,1 @@
-"""Research calculations used by the Streamlit pages."""
+"""Screen, backtest, and filing calculations."""

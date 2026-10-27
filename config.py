@@ -1,8 +1,5 @@
-"""
-config.py — Global configuration, theme palette, and constants for FinTools Pro.
-"""
+"""Theme, ticker list, screener presets, and backtest defaults."""
 
-# ── Colour Palette ────────────────────────────────────────────────────────────
 THEME = {
     "bg":           "#0a0e1a",
     "surface":      "#111827",
@@ -18,7 +15,6 @@ THEME = {
     "chart_bg":     "#0d1220",
 }
 
-# ── Plotly base layout ────────────────────────────────────────────────────────
 PLOTLY_LAYOUT = dict(
     paper_bgcolor=THEME["chart_bg"],
     plot_bgcolor=THEME["chart_bg"],
@@ -43,9 +39,8 @@ FORM4_BUSINESS_DAY_LAG = 2
 # Exchange holidays are not rolled.
 THIRTEEN_F_LAG_DAYS = 45
 
-# ── Universe of tickers for screener ─────────────────────────────────────────
-# Names that are listed today. This is not point-in-time index membership:
-# delisted companies are absent, so screens on this list have survivorship bias.
+# Names that trade today. Delisted companies are absent, so a screen on this
+# list is conditioned on survival. Not historical index membership.
 SP500_SAMPLE = [
     "AAPL","MSFT","GOOGL","AMZN","META","NVDA","TSLA","BRK-B","UNH","JPM",
     "V","XOM","JNJ","PG","MA","HD","CVX","MRK","ABBV","LLY",
@@ -56,7 +51,6 @@ SP500_SAMPLE = [
     "ORCL","ADBE","AMD","INTC","NOW","UBER","LYFT","ABNB","SNOW","PLTR",
 ]
 
-# ── Screener presets ──────────────────────────────────────────────────────────
 PRESETS = {
     "Value Stocks": {
         "max_pe": 15, "min_roe": 10, "max_pb": 3,
@@ -80,7 +74,6 @@ PRESETS = {
     },
 }
 
-# ── Backtester defaults ───────────────────────────────────────────────────────
 BACKTEST_DEFAULTS = {
     "start":        "2020-01-01",
     "end":          "2024-12-31",

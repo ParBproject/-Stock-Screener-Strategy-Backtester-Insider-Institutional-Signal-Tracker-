@@ -1,14 +1,7 @@
-"""Long/flat backtest with next-open fills.
+"""Long/flat backtest. A close signal on bar t fills at the next open.
 
-A signal on bar t may use that bar's close. The order is filled at the open
-of bar t+1. The position then earns the next open-to-open return. Filling at
-the signal bar's close, or earning that bar's return, is look-ahead bias and
-is not what this simulator does.
-
-Commission and slippage are fractions of traded notional and are charged on
-turnover. Returns are compounded. The final open has no following open, so a
-signal on the last bar is not filled and the last open-to-close move is not
-marked.
+Commission and slippage are fractions of traded notional, charged when the
+position changes. The last open is not marked.
 """
 
 from __future__ import annotations
@@ -80,9 +73,9 @@ def simulate_long_flat(
 ) -> dict:
     """Simulate a long/flat book.
 
-    ``signal`` is the desired exposure known at the close. Exposure held while
-    earning the open-to-open return that starts at bar t is the prior close's
-    signal, scaled by ``position_fraction``.
+    ``signal`` is the exposure known at the close. The open-to-open return
+    that starts at bar t uses the previous bar's signal, scaled by
+    ``position_fraction``.
     """
     if initial_capital <= 0:
         raise ValueError("initial_capital must be positive")
@@ -111,9 +104,7 @@ def simulate_long_flat(
     turnover.iloc[0] = abs(float(held.iloc[0]))
     net = held * gross - turnover * unit_cost
 
-    # The last open has no following open. A zero return there is not an
-    # observation, and counting it pulls Sharpe and CAGR toward a flat day
-    # that has not happened. A fill on that open (an exit) is real and stays.
+    # No following open, so this bar is not a return. An exit fill on it still counts.
     metric_returns = net
     if len(net) >= 2 and float(turnover.iloc[-1]) == 0.0 and pd.isna(raw_forward.iloc[-1]):
         metric_returns = net.iloc[:-1]
@@ -153,12 +144,10 @@ def run_backtest(
     slippage: float = 0.0,
     position_fraction: float = 1.0,
 ) -> dict:
-    """Build ``strategy`` on closes and fill it with ``simulate_long_flat``.
+    """Run ``strategy`` and a fully invested buy-and-hold of the same opens.
 
-    Also runs a buy-and-hold of the same opens: long from the first close, so
-    the first fill is the next open, with the same commission and slippage and
-    with the full capital invested. Alpha, beta, and the geometric excess use
-    that path. The strategy's position fraction does not scale the benchmark.
+    Buy-and-hold uses the same commission and slippage. The strategy's
+    position fraction does not scale it.
     """
     if "open" not in ohlcv.columns or "close" not in ohlcv.columns:
         raise ValueError("ohlcv must include open and close columns")
@@ -199,11 +188,7 @@ def run_backtest(
 
 
 def _prepared_ohlcv(ohlcv: pd.DataFrame) -> pd.DataFrame:
-    """Sort by time so rolling indicators look backward along the calendar.
-
-    A shuffled download would otherwise treat adjacent rows as adjacent
-    sessions. Duplicate timestamps are rejected rather than averaged.
-    """
+    """Sort into calendar order. Duplicate timestamps raise."""
     frame = ohlcv.sort_index()
     if not frame.index.is_unique:
         raise ValueError("ohlcv index has duplicate timestamps")

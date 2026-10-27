@@ -1,9 +1,7 @@
-"""Cross-sectional filters.
+"""Filter rows against ``config.PRESETS``.
 
-Criteria match ``config.PRESETS``. Compared values are already in display
-units: ratios such as P/E stay as ratios, and ROE, yields, and growth are in
-percent (10 means 10%). A missing value fails a constraint instead of passing
-through it. This module does not fetch data and does not look backward.
+P/E stays a ratio. ROE, yields, and growth are in percent. A missing value
+fails the constraint.
 """
 
 from __future__ import annotations

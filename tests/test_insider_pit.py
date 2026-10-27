@@ -1,4 +1,4 @@
-"""Pins insider and fundamental release dates, including a backtest of the lag."""
+"""Filings and fundamentals stay hidden until a public date."""
 
 import pandas as pd
 import pytest
@@ -136,7 +136,7 @@ def test_thirteen_f_weekend_deadline_moves_to_monday():
 
 
 def test_yahoo_date_reported_is_treated_as_the_quarter_end():
-    """Date Reported on the live institutional table lines up on quarter ends."""
+    """A Date Reported column is treated as the quarter end, not the filing day."""
     holders = pd.DataFrame(
         {
             "Date Reported": [pd.Timestamp("2026-06-30"), pd.Timestamp("2026-06-30")],

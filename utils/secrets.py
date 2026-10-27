@@ -1,8 +1,6 @@
-"""Read optional vendor credentials.
+"""Read an optional secret from the environment, then Streamlit secrets.
 
-yfinance does not need a key. Nothing in this repository should embed a
-token. Callers that add a keyed vendor should use :func:`get_secret`, which
-reads the process environment first and Streamlit secrets second.
+yfinance does not need a key. Do not put tokens in source.
 """
 
 from __future__ import annotations

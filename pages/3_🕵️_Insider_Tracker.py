@@ -1,4 +1,4 @@
-"""Insider filings scored only after they are public. Institutions are display-only."""
+"""Score insider filings after a public date. Institutional rows are display only."""
 
 from __future__ import annotations
 
@@ -18,14 +18,9 @@ from utils.data_fetcher import DataFetchError, get_insider_transactions, get_ins
 
 st.markdown("### Insider and institutional filings")
 st.caption(
-    "The transaction date is not the public date. When the feed has no filing stamp, "
-    "a Form 4 is treated as public two business days later (weekends are skipped; "
-    "exchange holidays are not). The score uses only filings already public on the "
-    "as-of date. It describes filing activity and is not a return forecast. "
-    "Institutional rows are not a backtest. Yahoo's Date Reported is the quarter end, "
-    "not the filing day, so a row is shown only once that quarter end plus 45 days "
-    "(rolled to Monday when the deadline is a weekend) is on or before the as-of date. "
-    "Exchange holidays are not rolled."
+    "Buys and sells count only after a public date. A missing filing date waits two business days. "
+    "The score is a count of those filings, not a forecast. "
+    "A 13F row is shown 45 days after quarter end."
 )
 
 ticker = st.text_input("Ticker", value="AAPL").strip().upper()
@@ -43,7 +38,7 @@ if st.button("Load filings", type="primary") and ticker:
             st.info("The vendor returned no insider transactions.")
         else:
             scored = score_filings(filings, pd.Timestamp(asof), lookback_days=int(lookback))
-            st.metric("Filing activity score", scored["score"], help="0–100 description of public insider prints. Not a forecast.")
+            st.metric("Filing activity score", scored["score"], help="Count of public insider buys and sells in the window. Not a forecast.")
             st.write(scored["label"])
             for reason in scored["reasons"]:
                 st.write(f"- {reason}")

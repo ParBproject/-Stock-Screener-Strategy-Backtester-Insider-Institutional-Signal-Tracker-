@@ -1,4 +1,4 @@
-"""API keys stay in the environment, a .env file, or Streamlit secrets."""
+"""Secrets come from the environment, a .env file, or Streamlit secrets."""
 
 import re
 from pathlib import Path

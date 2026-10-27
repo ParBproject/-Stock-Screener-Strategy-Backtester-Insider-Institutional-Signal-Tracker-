@@ -1,8 +1,7 @@
-"""Point-in-time fundamental snapshots.
+"""Pick the latest fundamental row whose ``available_date`` is already public.
 
-A row is visible only when ``available_date`` is on or before the decision
-date. ``period_end`` is the fiscal period, not the public release, and is
-rejected so a backtest cannot treat an unreported quarter as known.
+``period_end`` is the fiscal period, not the release date, and is rejected
+on its own.
 """
 
 from __future__ import annotations

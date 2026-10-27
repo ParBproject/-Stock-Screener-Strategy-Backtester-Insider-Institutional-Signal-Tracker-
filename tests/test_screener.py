@@ -1,4 +1,4 @@
-"""Screen filters fail closed when a value is missing."""
+"""A missing value fails a screen filter."""
 
 import pandas as pd
 import pytest

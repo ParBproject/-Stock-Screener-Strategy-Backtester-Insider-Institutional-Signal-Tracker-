@@ -1,9 +1,7 @@
-"""Insider-filing signals that cannot see a trade before it is public.
+"""Insider filings, visible only on or after a public date.
 
-Yahoo's insider feed reports the transaction date (``Start Date``) and does
-not report the SEC filing date. Form 4 is due two business days later. Using
-the transaction date as if the print were already public is look-ahead bias.
-When a filing date is present it is used instead. A stamp earlier than the
+Yahoo usually has a transaction date and no filing date. A missing filing
+date is treated as two business days later. A filing stamp earlier than the
 transaction is ignored.
 """
 
@@ -91,9 +89,7 @@ def standardize_transactions(raw: pd.DataFrame | None) -> pd.DataFrame:
 def classify_side(action, text, shares=None) -> str:
     """Map vendor text to buy, sell, or other.
 
-    Sale words win over purchase words. A positive share count with no
-    purchase language is ``other``: the Yahoo feed often leaves the text
-    blank or says "Stock Gift", and treating that as a buy inflates the score.
+    Sale words win. A blank row or a "Stock Gift" is ``other``, not a buy.
     A negative share count with no text is a sale.
     """
     blob = f"{action or ''} {text or ''}".lower()
@@ -111,11 +107,7 @@ def classify_side(action, text, shares=None) -> str:
 
 
 def score_filings(transactions: pd.DataFrame, asof, lookback_days: int = 90) -> dict:
-    """Score purchases and sales that were already public on ``asof``.
-
-    The number describes filing activity. It is not a return forecast.
-    Institutional holdings are not an input.
-    """
+    """Score buys and sells already public on ``asof``. Not a return forecast."""
     decision = _naive_day(asof)
     window_start = decision - pd.Timedelta(days=lookback_days)
     visible = _visible(_prepare(transactions), decision, window_start)
@@ -169,12 +161,10 @@ def insider_long_signal(
 
 
 def institutional_visible(holders: pd.DataFrame, asof, period_column: str = "period_end") -> pd.DataFrame:
-    """Keep 13F rows whose quarter-end plus the filing lag is on or before ``asof``.
+    """Keep 13F rows whose quarter end plus the filing lag is on or before ``asof``.
 
-    Yahoo's institutional table labels the quarter end ``Date Reported``.
-    That stamp is not the SEC filing date. Rows with no period end are
-    dropped: a holding we cannot date is not treated as already public.
-    ``public_date`` on the result is the first day the row may be used.
+    Yahoo labels the quarter end ``Date Reported``. Rows with no period end
+    are dropped. ``public_date`` is the first day the row may be used.
     """
     if holders is None or len(holders) == 0:
         return pd.DataFrame(columns=[] if holders is None else list(getattr(holders, "columns", [])))

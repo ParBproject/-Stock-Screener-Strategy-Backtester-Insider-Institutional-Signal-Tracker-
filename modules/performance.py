@@ -1,9 +1,4 @@
-"""Compounded returns and risk statistics.
-
-Total return and CAGR are compounded. They are not a sum of simple returns.
-CAGR and the Sharpe/Sortino ratios use 252 trading days. Sharpe and Sortino
-are None when their denominator is zero, rather than infinity.
-"""
+"""Compounded return and risk stats. Sharpe and Sortino are None when undefined."""
 
 from __future__ import annotations
 
@@ -85,11 +80,7 @@ def _sortino(returns: np.ndarray) -> float | None:
 
 
 def geometric_excess(strategy_total: float | None, benchmark_total: float | None) -> float | None:
-    """Wealth ratio minus one. Not the arithmetic gap between two total returns.
-
-    A strategy that compounds to 1.21 against a benchmark that compounds to
-    1.10 has an excess of 0.10, not 0.11.
-    """
+    """(1 + strategy) / (1 + benchmark) - 1."""
     if strategy_total is None or benchmark_total is None:
         return None
     strategy_wealth = 1.0 + float(strategy_total)
@@ -100,10 +91,9 @@ def geometric_excess(strategy_total: float | None, benchmark_total: float | None
 
 
 def _alpha_beta(returns: pd.Series, benchmark: pd.Series) -> tuple[float | None, float | None]:
-    """Jensen alpha with rf = 0, annualized by multiplying the daily alpha by 252.
+    """Daily Jensen alpha (rf = 0) times 252, and the OLS beta.
 
-    Beta is the OLS slope of strategy returns on benchmark returns. Alpha is
-    None when the benchmark does not vary.
+    Alpha is None when the benchmark does not vary.
     """
     paired = pd.concat(
         [returns.rename("strategy"), pd.Series(benchmark).astype(float).rename("benchmark")],

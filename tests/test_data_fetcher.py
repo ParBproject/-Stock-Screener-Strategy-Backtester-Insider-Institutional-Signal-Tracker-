@@ -1,4 +1,4 @@
-"""Data-access tests. yfinance is replaced; nothing here opens a socket."""
+"""Data access with yfinance mocked."""
 
 import pandas as pd
 import pytest
