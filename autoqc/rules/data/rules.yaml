@@ -133,6 +133,28 @@ english:
   min_language_confidence: 0.75
   min_word_ratio: 0.75
 
+# Item 9. Allowed names also come from allowed_ai.txt.
+# Uncertain phrases become escalate candidates and do not pick a band.
+ai:
+  disallowed_phrases:
+    - chatgpt
+    - claude
+    - gemini
+    - perplexity
+    - ai mode
+    - ask anything
+    - subject select
+    - generative fill
+  uncertain_phrases:
+    - auto enhance
+    - neural filter
+    - live text
+    - passive enhancement
+  coding_task_types:
+    - Coding
+    - Content & Writing
+    - Content and Writing
+
 review:
   reject_after_review_number: 3
 

@@ -26,3 +26,4 @@ class ReviewContext:
     observations: list = field(default_factory=list)
     actions: list = field(default_factory=list)
     transcript: object | None = None
+    findings: list = field(default_factory=list)

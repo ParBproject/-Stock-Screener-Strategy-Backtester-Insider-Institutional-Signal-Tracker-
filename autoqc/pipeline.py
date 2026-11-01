@@ -12,6 +12,7 @@ import numpy as np
 from PIL import Image
 
 from autoqc.audio.transcribe import Transcript, load_transcript
+from autoqc.checks.ai_use import score_ai_use
 from autoqc.checks.clarity import score_clarity
 from autoqc.checks.clock import score_clock
 from autoqc.checks.duration import duration_report
@@ -19,11 +20,17 @@ from autoqc.checks.english import score_english
 from autoqc.checks.environment import environment_findings
 from autoqc.checks.epilogue import score_epilogue
 from autoqc.checks.goal_doc import score_goal_doc
+from autoqc.checks.licensing import score_licensing
+from autoqc.checks.pii import score_pii
 from autoqc.checks.metadata_match import score_metadata
 from autoqc.checks.narration import score_narration
 from autoqc.checks.profanity import score_profanity
 from autoqc.checks.typing_share import score_typing
+from autoqc.checks.rubric import rubric_findings
 from autoqc.checks.visibility import score_visibility
+from autoqc.checks.workflow import score_workflow
+from autoqc.drafts.compose import compose_drafts
+from autoqc.rules.engine import choose_action
 from autoqc.context import FrameImage, ReviewContext
 from autoqc.errors import AutoQCError
 from autoqc.ingest.submission import Submission, load_submission
@@ -79,10 +86,14 @@ def run_checks(ctx: ReviewContext):
         score_metadata(ctx),
         score_visibility(ctx),
         score_narration(ctx),
+        score_workflow(ctx),
         score_clock(ctx),
         score_goal_doc(ctx),
         score_typing(ctx),
         score_clarity(ctx),
+        score_ai_use(ctx),
+        score_pii(ctx),
+        score_licensing(ctx),
         score_profanity(ctx),
         score_english(ctx),
         score_epilogue(ctx),
@@ -122,7 +133,10 @@ def review_submission(folder: Path | str, config_dir: Path | str | None = None) 
     submission = load_submission(Path(folder), rules)
     ctx = build_context(submission, rules)
     checks = run_checks(ctx)
-    findings = [item.to_dict() for item in environment_findings(ctx)]
+    finding_models = [*environment_findings(ctx), *ctx.findings, *rubric_findings(ctx)]
+    decision = choose_action(checks, finding_models, submission, rules)
+    drafts = compose_drafts(decision, checks, submission, rules)
+    findings = [item.to_dict() for item in finding_models]
     stats = duration_report(submission.media.duration, rules)
     stats["frame_count"] = len(ctx.frames)
     stats["scene_times"] = list(submission.scene_times)
@@ -147,29 +161,32 @@ def review_submission(folder: Path | str, config_dir: Path | str | None = None) 
     notices = list(submission.notices)
     if isinstance(ctx.transcript, Transcript) and ctx.transcript.notice:
         notices.append(ctx.transcript.notice)
-    needs = [
-        {
-            "key": check.key,
-            "item": check.item,
-            "summary": check.summary,
-            "confidence": check.confidence,
-        }
-        for check in checks
-        if not check.drives_verdict
-    ]
+    needs = list(decision.needs_human)
+    for check in checks:
+        if not check.drives_verdict and check.band == 3:
+            needs.append(
+                {
+                    "key": check.key,
+                    "item": check.item,
+                    "summary": check.summary,
+                    "confidence": check.confidence,
+                }
+            )
     return Review(
         submission_path=str(submission.root),
-        status="partial",
-        recommended_action=None,
-        reasons=[],
+        status="complete",
+        recommended_action=decision.action,
+        reasons=list(decision.reasons),
         needs_human=needs,
         checks=checks,
         findings=findings,
         stats=stats,
-        drafts=dict(DRAFTS),
+        drafts=drafts.as_dict(),
         notices=notices,
         media=submission.media.to_dict(),
         parsed=_parsed(submission),
         issues=list(submission.issues),
         actions=[action.to_dict() for action in ctx.actions],
+        corrected_metadata_rtf=drafts.corrected_metadata_rtf,
+        rename_suggestions=drafts.rename_suggestions,
     )
