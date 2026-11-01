@@ -11,11 +11,17 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
+from autoqc.audio.transcribe import Transcript, load_transcript
+from autoqc.checks.clarity import score_clarity
 from autoqc.checks.clock import score_clock
 from autoqc.checks.duration import duration_report
+from autoqc.checks.english import score_english
 from autoqc.checks.environment import environment_findings
+from autoqc.checks.epilogue import score_epilogue
 from autoqc.checks.goal_doc import score_goal_doc
 from autoqc.checks.metadata_match import score_metadata
+from autoqc.checks.narration import score_narration
+from autoqc.checks.profanity import score_profanity
 from autoqc.checks.typing_share import score_typing
 from autoqc.checks.visibility import score_visibility
 from autoqc.context import FrameImage, ReviewContext
@@ -62,14 +68,24 @@ def prepare_screen(ctx: ReviewContext) -> None:
     ctx.actions = build_actions(ctx.observations)
 
 
+def prepare_audio(ctx: ReviewContext) -> None:
+    ctx.transcript = load_transcript(ctx.submission, ctx.rules)
+
+
 def run_checks(ctx: ReviewContext):
     prepare_screen(ctx)
+    prepare_audio(ctx)
     return [
         score_metadata(ctx),
         score_visibility(ctx),
+        score_narration(ctx),
         score_clock(ctx),
         score_goal_doc(ctx),
         score_typing(ctx),
+        score_clarity(ctx),
+        score_profanity(ctx),
+        score_english(ctx),
+        score_epilogue(ctx),
     ]
 
 
@@ -111,11 +127,26 @@ def review_submission(folder: Path | str, config_dir: Path | str | None = None) 
     stats["frame_count"] = len(ctx.frames)
     stats["scene_times"] = list(submission.scene_times)
     stats["media_source"] = submission.media.source
-    typing = next((check for check in checks if check.key == "typing"), None)
+    by_key = {check.key: check for check in checks}
+    typing = by_key.get("typing")
     if typing is not None:
         stats["typing_share"] = typing.details.get("share")
         stats["typing_percent"] = typing.details.get("percent")
         stats["typing_cap"] = typing.details.get("cap")
+    narration = by_key.get("narration")
+    if narration is not None:
+        stats["narration_coverage"] = narration.details.get("where_fraction")
+        stats["narration_why_coverage"] = narration.details.get("full_fraction")
+    clarity = by_key.get("clarity")
+    if clarity is not None:
+        stats["wpm"] = clarity.details.get("wpm")
+        stats["asr_confidence"] = clarity.details.get("mean_confidence")
+    english = by_key.get("english")
+    if english is not None:
+        stats["language"] = english.details.get("language")
+    notices = list(submission.notices)
+    if isinstance(ctx.transcript, Transcript) and ctx.transcript.notice:
+        notices.append(ctx.transcript.notice)
     needs = [
         {
             "key": check.key,
@@ -136,7 +167,7 @@ def review_submission(folder: Path | str, config_dir: Path | str | None = None) 
         findings=findings,
         stats=stats,
         drafts=dict(DRAFTS),
-        notices=list(submission.notices),
+        notices=notices,
         media=submission.media.to_dict(),
         parsed=_parsed(submission),
         issues=list(submission.issues),
