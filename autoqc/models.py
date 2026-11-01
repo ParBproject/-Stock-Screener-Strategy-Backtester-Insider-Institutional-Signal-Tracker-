@@ -55,6 +55,98 @@ class CheckResult:
 
 
 @dataclass
+class WindowBox:
+    app: str
+    title: str
+    window_id: str
+    x: int
+    y: int
+    w: int
+    h: int
+    z: int
+    active: bool = False
+    is_content: bool = False
+    is_goal: bool = False
+    text: str = ""
+
+    @property
+    def area(self) -> int:
+        return max(0, self.w) * max(0, self.h)
+
+    @property
+    def label(self) -> str:
+        if self.app and self.title:
+            return f"{self.app} - {self.title}"
+        return self.app or self.title or "window"
+
+
+@dataclass
+class FrameObservation:
+    t: float
+    width: int
+    height: int
+    dock_visible: bool
+    dock_position: str
+    frontmost_app: str | None
+    frontmost_title: str | None
+    windows: list[WindowBox]
+    cursor: tuple[int, int] | None
+    cursor_default: bool | None
+    mouse_moving: bool
+    click: bool
+    click_target: str | None
+    ocr_text: str
+    wallpaper_default: bool
+    image_path: str | None = None
+
+
+@dataclass
+class Action:
+    t: float
+    kind: str
+    app: str
+    target: str
+    window: str
+    detail: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "t": self.t,
+            "kind": self.kind,
+            "app": self.app,
+            "target": self.target,
+            "window": self.window,
+            "detail": self.detail,
+        }
+
+
+@dataclass
+class Finding:
+    id: str
+    category: str
+    action: str
+    confidence: float
+    summary: str
+    evidence: list[Evidence] = field(default_factory=list)
+    checklist_item: int | None = None
+    drives_verdict: bool = False
+    data: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "category": self.category,
+            "action": self.action,
+            "confidence": self.confidence,
+            "summary": self.summary,
+            "evidence": [item.to_dict() for item in self.evidence],
+            "checklist_item": self.checklist_item,
+            "drives_verdict": self.drives_verdict,
+            "data": self.data,
+        }
+
+
+@dataclass
 class Review:
     """One assisted review. ``auto_send`` is always false."""
 
@@ -71,6 +163,7 @@ class Review:
     media: dict[str, Any]
     parsed: dict[str, Any]
     issues: list[str]
+    actions: list[dict[str, Any]] = field(default_factory=list)
     corrected_metadata_rtf: str | None = None
     rename_suggestions: list[dict[str, Any]] = field(default_factory=list)
     prior_diff: dict[str, Any] | None = None
@@ -93,6 +186,7 @@ class Review:
             "media": self.media,
             "parsed": self.parsed,
             "issues": list(self.issues),
+            "actions": self.actions,
             "corrected_metadata_rtf": self.corrected_metadata_rtf,
             "rename_suggestions": self.rename_suggestions,
             "prior_diff": self.prior_diff,

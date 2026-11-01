@@ -13,14 +13,18 @@ from PIL import Image
 
 from autoqc.checks.clock import score_clock
 from autoqc.checks.duration import duration_report
+from autoqc.checks.environment import environment_findings
+from autoqc.checks.goal_doc import score_goal_doc
 from autoqc.checks.metadata_match import score_metadata
 from autoqc.checks.typing_share import score_typing
+from autoqc.checks.visibility import score_visibility
 from autoqc.context import FrameImage, ReviewContext
 from autoqc.errors import AutoQCError
 from autoqc.ingest.submission import Submission, load_submission
 from autoqc.models import Review
 from autoqc.rules.loader import RuleSet, load_rules
 from autoqc.vision.ocr import build_ocr
+from autoqc.vision.screen import build_actions, observe_frames
 
 DRAFTS = {
     "studio_feedback": "",
@@ -52,10 +56,19 @@ def build_context(submission: Submission, rules: RuleSet) -> ReviewContext:
     return ReviewContext(submission=submission, rules=rules, frames=frames, ocr=ocr)
 
 
+def prepare_screen(ctx: ReviewContext) -> None:
+    goal = ctx.submission.studio.goal if ctx.submission.studio else ""
+    ctx.observations = observe_frames(ctx.frames, ctx.rules, ctx.ocr, goal)
+    ctx.actions = build_actions(ctx.observations)
+
+
 def run_checks(ctx: ReviewContext):
+    prepare_screen(ctx)
     return [
         score_metadata(ctx),
+        score_visibility(ctx),
         score_clock(ctx),
+        score_goal_doc(ctx),
         score_typing(ctx),
     ]
 
@@ -93,6 +106,7 @@ def review_submission(folder: Path | str, config_dir: Path | str | None = None) 
     submission = load_submission(Path(folder), rules)
     ctx = build_context(submission, rules)
     checks = run_checks(ctx)
+    findings = [item.to_dict() for item in environment_findings(ctx)]
     stats = duration_report(submission.media.duration, rules)
     stats["frame_count"] = len(ctx.frames)
     stats["scene_times"] = list(submission.scene_times)
@@ -119,11 +133,12 @@ def review_submission(folder: Path | str, config_dir: Path | str | None = None) 
         reasons=[],
         needs_human=needs,
         checks=checks,
-        findings=[],
+        findings=findings,
         stats=stats,
         drafts=dict(DRAFTS),
         notices=list(submission.notices),
         media=submission.media.to_dict(),
         parsed=_parsed(submission),
         issues=list(submission.issues),
+        actions=[action.to_dict() for action in ctx.actions],
     )
