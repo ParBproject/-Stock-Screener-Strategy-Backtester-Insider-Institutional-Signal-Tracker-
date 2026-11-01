@@ -1,0 +1,7 @@
+numpy>=1.26
+pillow>=10
+PyYAML>=6
+striprtf>=0.0.26
+fastapi>=0.110
+uvicorn>=0.27
+python-multipart>=0.0.9

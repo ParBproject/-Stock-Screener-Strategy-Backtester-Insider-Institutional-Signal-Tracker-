@@ -1,0 +1,8 @@
+# AI that can still score band 2 when it is the only AI on screen.
+# Format: Name | allowed condition
+# Anything else that is clearly prompting, AI Mode, "Ask anything", or an
+# AI feature doing the task work is band 3. Unclear or passive enhancement
+# becomes an escalate candidate instead of a silent band.
+Google AI Overview | reading the overview only, with no follow-up prompts
+Autocomplete | IDE or system autocomplete, not a chat
+Code assistant | generated code that is itself the approved software or ML task

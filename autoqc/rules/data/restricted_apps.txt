@@ -1,0 +1,8 @@
+# Writer Handbook restricted apps. One app per line.
+# Format: App name | prohibited use
+# Matching is case-insensitive. Edit freely; this list is a starting point.
+uTorrent | torrenting or other unapproved file sharing
+The Pirate Bay | downloading copyrighted media
+Steam | gaming that is not the approved task
+Discord | unapproved communication during the recording
+BitTorrent | torrenting or other unapproved file sharing

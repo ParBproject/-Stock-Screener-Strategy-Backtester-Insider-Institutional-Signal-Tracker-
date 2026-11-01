@@ -1,0 +1,19 @@
+# Patterns are Python regular expressions. A confident match is band 3.
+# uncertain_patterns become escalate candidates, not a silent fail.
+# ignore_contains drops placeholder values before matching.
+
+ignore_contains:
+  - example.com
+  - example.org
+  - 000-00-0000
+  - 123-45-6789
+
+patterns:
+  email: '(?i)\b[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}\b'
+  phone: '\b(?:\+?1[-.\s]?)?(?:\(\d{3}\)|\d{3})[-.\s]\d{3}[-.\s]\d{4}\b'
+  ssn: '\b\d{3}-\d{2}-\d{4}\b'
+  street: '(?i)\b\d{1,5}\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,3}\s+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr)\b'
+
+uncertain_patterns:
+  partial_ssn: '\b\d{3}-\d{2}\b'
+  labeled_name: '(?i)\b(?:my name is|i am|this is)\s+[A-Z][a-z]+\s+[A-Z][a-z]+\b'

@@ -1,0 +1,159 @@
+# Auto QC action rubric and thresholds.
+# Edit this file (or pass a directory of overrides with --config) to change
+# scoring. Deep-merge means an override file only needs the keys you change.
+# Low-confidence findings are listed under "Needs human look" and do not
+# change the recommended action.
+
+version: 1
+
+# Findings below this confidence never drive the verdict.
+low_confidence: 0.60
+
+# auto | glyph | tesseract | easyocr
+# auto uses the tesseract binary when it is on PATH, otherwise glyph OCR.
+# easyocr is never selected automatically (it may download weights).
+ocr_engine: auto
+
+# sidecar | whisper | auto
+# auto reads transcript.json when present and does not download a model.
+# Set whisper to run faster-whisper. Missing weights or packages degrade
+# to an empty transcript with low confidence.
+audio:
+  backend: auto
+  allow_model_download: false
+  vad: auto   # auto | webrtcvad | energy | off
+  diarize: false  # pyannote; requires a Hugging Face token, else skipped
+
+# Optional screen-understanding HTTP adapter. Off unless an endpoint is set.
+# The deterministic vision path always runs; the adapter may replace it.
+vision_llm:
+  enabled: false
+  endpoint: ""
+  model: ""
+  api_key_env: "AUTOQC_VISION_API_KEY"
+
+priority:
+  - ESCALATE
+  - REJECT
+  - SEND_BACK
+  - FIX_AND_APPROVE
+  - APPROVE
+
+video:
+  min_seconds: 900            # 15:00 inclusive
+  max_seconds: 3299           # 54:59 inclusive
+  long_notice_seconds: 3059   # 50:59; note only, no deduction by itself
+
+clock:
+  edge_seconds: 10
+  right_fraction: 0.50
+
+typing:
+  # A consecutive-frame interval counts as typing when the changed-pixel
+  # count inside the content area is within this band.
+  min_changed_pixels: 8
+  max_changed_pixels: 800
+  pixel_tolerance: 18
+  max_share: 0.25
+  max_share_coding_writing: 0.35
+  segment_feedback_seconds: 45
+  relaxed_task_types:
+    - Coding
+    - Content & Writing
+    - Content and Writing
+
+layout:
+  menu_bar_height_fraction: 0.08
+  menu_bar_min_px: 12
+  dock_height_fraction: 0.10
+  dock_min_px: 16
+
+overlap:
+  cover_fraction: 0.25
+  # Longest span of >cover_fraction:
+  #   <= band2_over_seconds -> band 1
+  #   > band2 and <= band3  -> band 2
+  #   > band3               -> band 3
+  band2_over_seconds: 6
+  band3_over_seconds: 30
+  # Any cover of the working-content body above this fraction is band 3.
+  working_content_fraction: 0.15
+  # Below cover_fraction but at least this much is "minor overlap" feedback.
+  minor_overlap_fraction: 0.05
+
+narration:
+  min_fraction: 0.70
+  pre_seconds: 1.5
+  post_seconds: 6.0
+
+clarity:
+  asr_clear_min_confidence: 0.80
+  span_flag_confidence: 0.60
+  wpm_min: 110
+  wpm_max: 190
+  # A stretch of audio with energy but no confident words, this long, is
+  # flagged for a human listen. It does not by itself fail the item when
+  # the rest of the narration is clear.
+  inaudible_seconds: 4
+
+epilogue:
+  max_seconds: 240
+  min_words_detail: 40
+  min_topics_detail: 3
+  thin_word_count: 25
+  # Ideas first approved before this instant (6pm Pacific) do not need one.
+  not_required_before: "2026-10-19T18:00:00-07:00"
+
+goal_doc:
+  promptly_within_seconds: 10
+  disallowed_apps:
+    - Notes
+    - TextEdit
+
+apps:
+  min_use_seconds: 2
+
+ui_feedback:
+  intro_seconds: 20
+  silence_seconds: 45
+  rushed_click_gap_seconds: 0.4
+  rushed_click_min_count: 5
+  mouse_inactivity_seconds: 30
+  mercor_glimpse_max_seconds: 2
+
+workflow:
+  filename_near_distance: 3
+  resubmit_text_similarity: 0.97
+  resubmit_duration_tolerance: 0.02
+
+key_ideas:
+  recall_min: 0.85
+
+english:
+  min_language_confidence: 0.75
+  min_word_ratio: 0.75
+
+review:
+  reject_after_review_number: 3
+
+low_complexity:
+  max_actions: 8
+
+ingest:
+  scene_backend: ffmpeg   # ffmpeg | pyscenedetect | auto
+  scene_threshold: 0.4
+  analysis_max_width: 640
+  edge_seconds: 10
+  edge_fps: 5
+  base_fps: 1
+
+# Names in the same group are the same app when lists are compared.
+app_aliases:
+  - ["Notes", "Notes.app"]
+  - ["TextEdit", "TextEdit.app"]
+  - ["Preview", "Preview.app"]
+  - ["Safari", "Safari.app"]
+  - ["Google Chrome", "Chrome"]
+  - ["Finder", "Finder.app"]
+  - ["Terminal", "Terminal.app"]
+  - ["Numbers", "Numbers.app"]

@@ -1,0 +1,14 @@
+# Profanity lexicon. Format: term | severity
+# severity is "minor" or "major".
+# Major covers explicit language and anything prominent. Add slur terms as
+# "major"; they are intentionally not shipped in this starter list.
+# Matching is case-insensitive and uses word boundaries.
+damn | minor
+hell | minor
+crap | minor
+shit | minor
+asshole | minor
+bitch | major
+fuck | major
+fucking | major
+motherfucker | major

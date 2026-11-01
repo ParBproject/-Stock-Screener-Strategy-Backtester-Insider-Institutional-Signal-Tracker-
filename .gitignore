@@ -29,3 +29,7 @@ env/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Auto QC local review output
+.autoqc/
+autoqc_reviews.db

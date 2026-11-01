@@ -52,3 +52,7 @@ tests/
 Indicators are rolling and EWM calculations in `utils/indicators.py`. `utils.secrets.get_secret` reads the environment, then a local `.env`, then Streamlit secrets. `.env` is gitignored. `.env.example` is the empty pattern.
 
 Not investment advice. Historical fills and filing activity do not predict returns. Vendor data can be missing or revised.
+
+## Auto QC
+
+`autoqc/` is a separate reviewer-assist tool for screen-recorded task videos. It does not send feedback. See `autoqc/README.md`.

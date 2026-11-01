@@ -1,0 +1,47 @@
+# Deliverable licensing. A fail marker on a deliverable or on the asset
+# being edited is band 3. The same marker on a page the writer is only
+# browsing does not fail when it is just a logo or site chrome.
+# Uncertain markers become escalate candidates.
+
+fail_markers:
+  - shutterstock
+  - getty images
+  - gettyimages
+  - istock
+  - adobe stock
+  - all rights reserved
+  - watermark
+  - copyrighted music
+  - editorial use only
+
+allowed_markers:
+  - unsplash
+  - pexels
+  - creative commons
+  - cc0
+  - public domain
+  - pixabay
+
+uncertain_markers:
+  - license unclear
+  - rights unknown
+  - may be copyrighted
+
+# Brands that can appear as logos on a site being browsed. Presence alone,
+# while the frontmost app is a browser and the writer is not editing the
+# asset into the deliverable, does not fail item 11.
+logo_brands:
+  - nike
+  - apple
+  - google
+  - microsoft
+  - coca-cola
+  - mcdonald
+
+browser_apps:
+  - Safari
+  - Google Chrome
+  - Chrome
+  - Firefox
+  - Arc
+  - Edge
