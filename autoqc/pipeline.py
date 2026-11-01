@@ -33,6 +33,7 @@ from autoqc.drafts.compose import compose_drafts
 from autoqc.rules.engine import choose_action
 from autoqc.context import FrameImage, ReviewContext
 from autoqc.errors import AutoQCError
+from autoqc.ingest.diff import submission_diff
 from autoqc.ingest.submission import Submission, load_submission
 from autoqc.models import Review
 from autoqc.rules.loader import RuleSet, load_rules
@@ -158,6 +159,21 @@ def review_submission(folder: Path | str, config_dir: Path | str | None = None) 
     english = by_key.get("english")
     if english is not None:
         stats["language"] = english.details.get("language")
+    if isinstance(ctx.transcript, Transcript):
+        stats["transcript"] = {
+            "language": ctx.transcript.language,
+            "language_confidence": ctx.transcript.language_confidence,
+            "text": ctx.transcript.text,
+            "words": [
+                {
+                    "word": word.word,
+                    "start": word.start,
+                    "end": word.end,
+                    "confidence": word.confidence,
+                }
+                for word in ctx.transcript.words
+            ],
+        }
     notices = list(submission.notices)
     if isinstance(ctx.transcript, Transcript) and ctx.transcript.notice:
         notices.append(ctx.transcript.notice)
@@ -183,10 +199,14 @@ def review_submission(folder: Path | str, config_dir: Path | str | None = None) 
         stats=stats,
         drafts=drafts.as_dict(),
         notices=notices,
-        media=submission.media.to_dict(),
+        media={
+            **submission.media.to_dict(),
+            "frames": [{"t": frame.t, "path": frame.path} for frame in submission.frames],
+        },
         parsed=_parsed(submission),
         issues=list(submission.issues),
         actions=[action.to_dict() for action in ctx.actions],
         corrected_metadata_rtf=drafts.corrected_metadata_rtf,
         rename_suggestions=drafts.rename_suggestions,
+        prior_diff=submission_diff(submission),
     )

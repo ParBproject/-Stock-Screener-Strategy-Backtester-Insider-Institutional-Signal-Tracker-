@@ -21,7 +21,7 @@ from autoqc.checks.profanity import score_profanity
 from autoqc.models import Action, WindowBox
 from autoqc.models import FrameObservation
 from autoqc.rules.loader import load_rules
-from tests.autoqc.support import make_context
+from tests.autoqc.support import make_context, solid
 
 PT = ZoneInfo("America/Los_Angeles")
 EXAMPLE = "I'll click the blue Export button in the top right to save the chart as a PDF."
@@ -262,3 +262,9 @@ def test_energy_vad_and_whisper_opt_out(tmp_path: Path):
     assert spans
     assert spans[0][0] == 1.0 or abs(spans[0][0] - 1.0) < 0.15
     assert transcribe_with_whisper(tmp_path / "no-video.mp4", allow_download=False) is None
+    from autoqc.audio.diarize import diarize_turns
+    from autoqc.vision.llm import understand_frame
+
+    rules = load_rules()
+    assert diarize_turns(None, rules) is None
+    assert understand_frame(solid(8, 8), rules) is None

@@ -7,6 +7,7 @@ import json
 import sys
 from pathlib import Path
 
+from autoqc.db import save_review
 from autoqc.errors import AutoQCError
 from autoqc.models import Review
 from autoqc.pipeline import review_submission
@@ -32,6 +33,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Write the review JSON here, or - for stdout",
     )
+    review.add_argument("--db", type=Path, default=None, help="SQLite file for saved reviews")
+    serve = sub.add_parser("serve", help="Open the local review UI")
+    serve.add_argument("--db", type=Path, default=Path("autoqc_reviews.db"))
+    serve.add_argument("--host", default="127.0.0.1")
+    serve.add_argument("--port", type=int, default=8765)
     return parser
 
 
@@ -70,6 +76,8 @@ def write_review(review: Review, destination: str | Path | None, submission: Pat
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.command == "serve":
+        return _cmd_serve(args)
     if args.command != "review":
         parser.print_help()
         return 2
@@ -80,10 +88,22 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {exc}", file=sys.stderr)
         return 2
     written = write_review(review, args.json_out, folder)
+    if args.db is not None:
+        review_id = save_review(args.db, review)
+        print(f"Saved review {review_id} to {args.db}")
     if args.json_out is None or str(args.json_out) != "-":
         print(format_summary(review))
         if written is not None:
             print(f"Wrote {written}")
+    return 0
+
+
+def _cmd_serve(args) -> int:
+    import uvicorn
+
+    from autoqc.ui.api import create_app
+
+    uvicorn.run(create_app(Path(args.db)), host=args.host, port=args.port)
     return 0
 
 

@@ -11,6 +11,20 @@ from autoqc.models import CheckResult, Evidence
 from autoqc.timefmt import fmt_ts
 
 
+def _said_by_writer(word, turns: list[dict]) -> bool:
+    """Without diarization every word is the writer's. A second speaker is not."""
+    if not turns:
+        return True
+    durations: dict[str, float] = {}
+    for turn in turns:
+        durations[turn["speaker"]] = durations.get(turn["speaker"], 0.0) + (turn["end"] - turn["start"])
+    primary = max(durations, key=durations.get)
+    for turn in turns:
+        if turn["start"] <= word.start <= turn["end"]:
+            return turn["speaker"] == primary
+    return True
+
+
 def _hits(text: str, terms) -> list:
     found = []
     for term in terms:
@@ -25,6 +39,8 @@ def score_profanity(ctx: ReviewContext) -> CheckResult:
     said = []
     if transcript:
         for word in transcript.words:
+            if not _said_by_writer(word, transcript.turns):
+                continue
             for term in _hits(word.word, terms):
                 said.append((word.start, term, word.word))
     typed = []

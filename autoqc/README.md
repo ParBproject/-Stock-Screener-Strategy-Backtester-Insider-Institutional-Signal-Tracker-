@@ -9,9 +9,15 @@ The finance app at the repository root is separate. Auto QC lives in this packag
 ```bash
 pip install -r requirements-autoqc.txt
 python -m autoqc review path/to/submission
+python -m autoqc review path/to/submission --db autoqc_reviews.db
+python -m autoqc serve --db autoqc_reviews.db
 ```
 
-The review JSON is written to `path/to/submission/.autoqc/review.json`. `--json -` prints it to stdout. `--config DIR` deep-merges `DIR/rules.yaml` over the packaged rubric and, when present, replaces the policy lists (`restricted_apps.txt`, `allowed_ai.txt`, `profanity.txt`, `pii_rules.yaml`, `licensing_rules.yaml`).
+The review JSON is written to `path/to/submission/.autoqc/review.json`. `--json -` prints it to stdout. `--db` also stores the review in SQLite. `--config DIR` deep-merges `DIR/rules.yaml` over the packaged rubric and, when present, replaces the policy lists (`restricted_apps.txt`, `allowed_ai.txt`, `profanity.txt`, `pii_rules.yaml`, `licensing_rules.yaml`).
+
+`autoqc serve` opens a local React review page at http://127.0.0.1:8765. It lists saved reviews, shows the recommended action, the 14-item scorecard, findings, a frame with timeline markers, the transcript, draft text with copy buttons, a corrected Metadata.rtf download, rename suggestions, and the diff against a prior submission. There is no send button.
+
+The recommended action is one of `ESCALATE`, `REJECT`, `SEND BACK`, `FIX + APPROVE`, or `APPROVE`, in that priority order. Findings below `low_confidence` are listed under "Needs human look" and do not change the action.
 
 ```bash
 python -m pytest tests/autoqc -q

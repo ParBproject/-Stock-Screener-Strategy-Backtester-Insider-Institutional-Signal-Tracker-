@@ -10,6 +10,7 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from autoqc.audio.diarize import diarize_turns
 from autoqc.ingest.submission import Submission
 from autoqc.rules.loader import RuleSet
 
@@ -29,6 +30,7 @@ class Transcript:
     words: list[Word] = field(default_factory=list)
     source: str = "empty"
     notice: str = ""
+    turns: list[dict] = field(default_factory=list)
 
     @property
     def text(self) -> str:
@@ -102,9 +104,13 @@ def transcribe_with_whisper(media: Path, *, allow_download: bool) -> Transcript 
 def load_transcript(submission: Submission, rules: RuleSet) -> Transcript:
     if submission.transcript_path and submission.transcript_path.exists():
         try:
-            return load_sidecar(submission.transcript_path)
+            transcript = load_sidecar(submission.transcript_path)
         except (OSError, json.JSONDecodeError, TypeError, ValueError):
             return empty_transcript(f"unreadable transcript file: {submission.transcript_path.name}")
+        turns = diarize_turns(submission.recording, rules)
+        if turns:
+            transcript.turns = turns
+        return transcript
 
     backend = str(rules.get("audio.backend", "auto")).lower()
     allow = bool(rules.get("audio.allow_model_download", False))

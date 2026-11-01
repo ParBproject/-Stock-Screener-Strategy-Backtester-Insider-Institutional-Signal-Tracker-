@@ -17,6 +17,7 @@ from autoqc.models import Action, FrameObservation, WindowBox
 from autoqc.rules.loader import RuleSet
 from autoqc.vision.layout import menu_and_dock
 from autoqc.vision.font import GLYPH_H
+from autoqc.vision.llm import understand_frame
 from autoqc.vision.ocr import GlyphOcr, binarize, read_band
 from autoqc.vision.theme import ARROW, TITLE_PX, WALLPAPER_DEFAULT
 
@@ -94,6 +95,9 @@ def _observe_one(frame: FrameImage, rules: RuleSet, ocr, goal_text: str) -> Fram
     if front is None and windows:
         front = max(windows, key=lambda window: window.z)
     texts = [window.text for window in windows if window.text]
+    extra = understand_frame(image, rules)
+    if extra and extra.get("text"):
+        texts.append(str(extra["text"]))
     return FrameObservation(
         t=frame.t,
         width=width,
