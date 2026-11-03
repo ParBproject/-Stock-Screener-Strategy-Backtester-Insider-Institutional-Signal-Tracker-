@@ -2,6 +2,12 @@
 
 Streamlit app for screening a fixed list of stocks, backtesting a few technical rules, and reading insider filings. Prices and filings come from [yfinance](https://github.com/ranaroussi/yfinance). No API key.
 
+## Live demo
+
+https://YOUR-APP-NAME.streamlit.app
+
+Replace `YOUR-APP-NAME` with the subdomain from Streamlit Community Cloud after the first deploy. The steps are under [Deploy](#deploy).
+
 ## Pages
 
 **Home.** Latest daily close for a few indices and a watchlist. This is the last close from the vendor, not a live tick.
@@ -38,11 +44,23 @@ pip install -r requirements-dev.txt
 python -m pytest -q
 ```
 
+## Deploy
+
+Community Cloud installs the root `requirements.txt` and runs `app.py`. `requirements-dev.txt` is for local tests only. `.streamlit/config.toml` sets the dark theme. Use Python 3.11 so the deploy matches CI. Community Cloud does not read a `runtime.txt`; the version is chosen in Advanced settings.
+
+1. Open [share.streamlit.io](https://share.streamlit.io) and sign in with GitHub. Deploying needs admin access to this repo.
+2. Choose **Create app**, then **Yup, I have an app**.
+3. Set the repository to `ParBproject/-Stock-Screener-Strategy-Backtester-Insider-Institutional-Signal-Tracker-`, the branch to `main`, and the main file path to `app.py`.
+4. Optional: pick a custom subdomain. That name replaces `YOUR-APP-NAME` in the Live demo link.
+5. Open **Advanced settings** and select Python **3.11**. Leave Secrets empty. This app does not need a key. Do not commit `.streamlit/secrets.toml`.
+6. Deploy and wait for the first build. Installing the pinned packages can take a few minutes. Later pushes to `main` update the running app.
+
 ## Layout
 
 ```text
 app.py                 home page
 config.py              ticker list, presets, backtest defaults
+.streamlit/config.toml theme for local runs and Community Cloud
 modules/               screen, backtest, filings, performance stats
 utils/                 yfinance access, indicators, charts, secrets
 pages/                 screener, backtester, insider tracker

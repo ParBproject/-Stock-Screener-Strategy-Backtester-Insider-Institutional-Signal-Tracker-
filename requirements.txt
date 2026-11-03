@@ -1,4 +1,6 @@
-streamlit==1.64.0
+# Runtime dependencies for app.py. pytest and ruff stay in requirements-dev.txt.
+# Community Cloud should use Python 3.11, the same version CI installs.
+streamlit==1.66.1
 yfinance==1.7.0
 pandas==3.0.6
 numpy==2.4.6

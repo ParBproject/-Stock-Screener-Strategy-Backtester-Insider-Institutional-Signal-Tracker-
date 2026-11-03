@@ -1,0 +1,10 @@
+# Dark theme used locally and on Streamlit Community Cloud.
+# Cloud overrides a few server and browser flags; the theme still applies.
+
+[theme]
+base = "dark"
+primaryColor = "#00d4ff"
+backgroundColor = "#0a0e1a"
+secondaryBackgroundColor = "#111827"
+textColor = "#e2e8f0"
+font = "monospace"
