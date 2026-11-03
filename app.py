@@ -19,6 +19,10 @@ if css_path.exists():
 from utils.data_fetcher import DataFetchError, get_price_history, get_realtime_price, get_fundamentals
 from config import THEME
 
+# Quote rendering can fail after a fetch succeeds: a missing column, a bad
+# number, or a theme color that is not hex. Fetch failures are DataFetchError.
+_QUOTE_ERRORS = (AttributeError, IndexError, KeyError, TypeError, ValueError, ZeroDivisionError)
+
 with st.sidebar:
     st.markdown("""
     <div style='text-align:center; padding: 1rem 0;'>
@@ -81,10 +85,12 @@ for col, (name, sym) in zip(cols, INDICES.items()):
                 )
             else:
                 col.metric(label=name, value="—")
-        except DataFetchError:
+        except DataFetchError as exc:
             col.metric(label=name, value="—")
-        except Exception:
+            st.warning(f"{name}: {exc}")
+        except _QUOTE_ERRORS:
             col.metric(label=name, value="—")
+            st.warning(f"{name}: market data is unavailable.")
 
 st.divider()
 
@@ -167,9 +173,9 @@ if watchlist:
                 st.plotly_chart(spark, config={"displayModeBar": False})
 
             except DataFetchError as exc:
-                col.warning(f"{ticker}: {exc}")
-            except Exception:
-                col.warning(f"{ticker}: market data is unavailable.")
+                st.warning(f"{ticker}: {exc}")
+            except _QUOTE_ERRORS:
+                st.warning(f"{ticker}: market data is unavailable.")
 
 st.divider()
 
